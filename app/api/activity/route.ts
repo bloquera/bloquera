@@ -105,6 +105,10 @@ type LearningActivityRow = {
   total_questions: number | null;
 };
 
+type LearningActivityInsertPayload = LearningActivityRow & {
+  user_id: string;
+};
+
 type ActivityWriteResult =
   | {
       persisted: true;
@@ -344,25 +348,35 @@ function toCookieHistoryPatch(activity: ActivityRecord): LearningHistory {
   };
 }
 
-function toSupabaseInsertPayload(activity: ActivityRecord, userId: string) {
+function toSupabaseInsertPayload(
+  activity: ActivityRecord,
+  userId: string,
+): LearningActivityInsertPayload {
   if (activity.type === "lesson_completion") {
     return {
+      activity_context: null,
       activity_type: "lesson_completion",
+      correct_count: null,
       created_at: activity.completedAt,
       lesson_slug: activity.lessonSlug,
       lesson_title: activity.lessonTitle,
+      passed: null,
+      response_preview: null,
+      total_questions: null,
       user_id: userId,
     };
   }
 
   if (activity.type === "quiz_attempt") {
     return {
+      activity_context: null,
       activity_type: "quiz_attempt",
       correct_count: activity.correctCount,
       created_at: activity.attemptedAt,
       lesson_slug: activity.lessonSlug,
       lesson_title: activity.lessonTitle,
       passed: activity.passed,
+      response_preview: null,
       total_questions: activity.totalQuestions,
       user_id: userId,
     };
@@ -375,7 +389,10 @@ function toSupabaseInsertPayload(activity: ActivityRecord, userId: string) {
       created_at: activity.repliedAt,
       lesson_slug: activity.lessonSlug,
       lesson_title: activity.lessonTitle,
+      correct_count: null,
+      passed: null,
       response_preview: activity.responsePreview,
+      total_questions: null,
       user_id: userId,
     };
   }
@@ -387,9 +404,13 @@ function toSupabaseInsertPayload(activity: ActivityRecord, userId: string) {
       source: activity.source,
     }),
     activity_type: "conversion_event",
+    correct_count: null,
     created_at: activity.occurredAt,
     lesson_slug: activity.targetSlug,
     lesson_title: activity.targetTitle,
+    passed: null,
+    response_preview: null,
+    total_questions: null,
     user_id: userId,
   };
 }
