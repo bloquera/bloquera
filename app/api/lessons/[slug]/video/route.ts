@@ -28,8 +28,23 @@ export async function GET(
     return jsonError("Upgrade to Pro to watch this lesson video.", 403);
   }
 
+  const { data: video, error: videoError } = await authResult.supabase
+    .from("lesson_videos")
+    .select("video_key")
+    .eq("lesson_slug", lesson.slug)
+    .eq("is_available", true)
+    .maybeSingle();
+
+  if (videoError) {
+    return jsonError("Unable to load this lesson video right now.", 503);
+  }
+
+  if (!video?.video_key) {
+    return jsonError("This lesson video is not available yet.", 404);
+  }
+
   try {
-    const url = await createLessonVideoUrl(lesson.slug);
+    const url = await createLessonVideoUrl(video.video_key);
 
     return NextResponse.json(
       { url },

@@ -148,14 +148,17 @@ lesson slug:
 npm run video:upload -- what-is-money ./videos/what-is-money.mp4
 ```
 
-The uploader writes to `lessons/<lesson-slug>.mp4` and refuses to overwrite an
-existing object. To intentionally replace a video, add `--force`:
+The uploader writes to `lessons/<lesson-slug>.mp4`, registers that key in the
+Supabase `lesson_videos` table, and refuses to overwrite an existing object. To
+intentionally replace a video, add `--force`:
 
 ```bash
 npm run video:upload -- what-is-money ./videos/what-is-money.mp4 --force
 ```
 
 The R2 variables documented in `.env.example` must be present in `.env.local`.
+The uploader also needs `NEXT_PUBLIC_SUPABASE_URL` and
+`SUPABASE_SERVICE_ROLE_KEY`. Apply `supabase/schema.sql` before the first upload.
 The API token needs Object Read & Write access scoped to the video bucket.
 For production, use a separate read-only token in the deployed app and keep the
 write-capable upload credentials local.

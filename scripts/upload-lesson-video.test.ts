@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   getLessonVideoKey,
   getR2UploadConfig,
+  getSupabaseUploadConfig,
   parseUploadArguments,
 } from "./upload-lesson-video.mjs";
 
@@ -39,5 +40,14 @@ describe("lesson video uploader", () => {
         R2_BUCKET: "bloquera-videos",
       }),
     ).toThrow(/not configured/i);
+  });
+
+  it("requires server-side Supabase credentials for metadata", () => {
+    expect(() =>
+      getSupabaseUploadConfig({
+        NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
+        SUPABASE_SERVICE_ROLE_KEY: "",
+      }),
+    ).toThrow(/supabase is not configured/i);
   });
 });

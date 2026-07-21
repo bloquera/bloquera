@@ -28,7 +28,7 @@ describe("R2 lesson videos", () => {
   });
 
   it("creates a 15-minute signed read URL", async () => {
-    await expect(createLessonVideoUrl("what-is-money")).resolves.toBe(
+    await expect(createLessonVideoUrl("lessons/what-is-money.mp4")).resolves.toBe(
       "https://signed.example/video.mp4",
     );
 
@@ -47,7 +47,7 @@ describe("R2 lesson videos", () => {
   it("fails closed when credentials are missing", async () => {
     vi.stubEnv("R2_SECRET_ACCESS_KEY", "");
 
-    await expect(createLessonVideoUrl("what-is-money")).rejects.toBeInstanceOf(
+    await expect(createLessonVideoUrl("lessons/what-is-money.mp4")).rejects.toBeInstanceOf(
       R2ConfigurationError,
     );
     expect(mocks.getSignedUrl).not.toHaveBeenCalled();

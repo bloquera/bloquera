@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 
 import { HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import nextEnv from "@next/env";
+import { createClient } from "@supabase/supabase-js";
 
 const { loadEnvConfig } = nextEnv;
 
@@ -51,6 +52,19 @@ export function getR2UploadConfig(env = process.env) {
   }
 
   return { accountId, accessKeyId, secretAccessKey, bucket };
+}
+
+export function getSupabaseUploadConfig(env = process.env) {
+  const url = env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  if (!url || !serviceRoleKey) {
+    throw new Error(
+      "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to .env.local.",
+    );
+  }
+
+  return { url, serviceRoleKey };
 }
 
 async function assertMp4(videoPath) {
@@ -100,6 +114,7 @@ export async function uploadLessonVideo({ slug, videoPath, force = false }) {
   await assertMp4(absoluteVideoPath);
 
   const env = getR2UploadConfig();
+  const supabaseEnv = getSupabaseUploadConfig();
   const client = new S3Client({
     region: "auto",
     endpoint: `https://${env.accountId}.r2.cloudflarestorage.com`,
@@ -135,10 +150,33 @@ export async function uploadLessonVideo({ slug, videoPath, force = false }) {
     }),
   );
 
+  const supabase = createClient(supabaseEnv.url, supabaseEnv.serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+  const { error: metadataError } = await supabase.from("lesson_videos").upsert(
+    {
+      lesson_slug: slug,
+      video_key: key,
+      is_available: true,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "lesson_slug" },
+  );
+
+  if (metadataError) {
+    throw new Error(
+      `The video was uploaded to ${key}, but Supabase metadata could not be saved: ${metadataError.message}`,
+    );
+  }
+
   return {
     bucket: env.bucket,
     bytes: fileStats.size,
     key,
+    metadataSaved: true,
   };
 }
 
@@ -151,6 +189,7 @@ async function main() {
   console.log(
     `Uploaded ${(result.bytes / 1024 / 1024).toFixed(2)} MiB to r2://${result.bucket}/${result.key}`,
   );
+  console.log(`Saved video metadata for ${options.slug} in Supabase.`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

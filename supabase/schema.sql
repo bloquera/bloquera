@@ -28,6 +28,26 @@ create table if not exists public.lesson_progress (
   primary key (user_id, lesson_slug)
 );
 
+create table if not exists public.lesson_videos (
+  lesson_slug text primary key,
+  video_key text not null unique,
+  duration_seconds integer,
+  is_available boolean not null default true,
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now()),
+  constraint lesson_videos_duration_seconds_check
+    check (duration_seconds is null or duration_seconds > 0)
+);
+
+alter table public.lesson_videos add column if not exists video_key text;
+alter table public.lesson_videos add column if not exists duration_seconds integer;
+alter table public.lesson_videos add column if not exists is_available boolean not null default true;
+alter table public.lesson_videos add column if not exists created_at timestamptz not null default timezone('utc'::text, now());
+alter table public.lesson_videos add column if not exists updated_at timestamptz not null default timezone('utc'::text, now());
+
+create unique index if not exists lesson_videos_video_key_key
+on public.lesson_videos (video_key);
+
 create table if not exists public.learning_activity (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -99,6 +119,7 @@ set public = excluded.public;
 
 alter table public.profiles enable row level security;
 alter table public.lesson_progress enable row level security;
+alter table public.lesson_videos enable row level security;
 alter table public.learning_activity enable row level security;
 alter table public.subscriptions enable row level security;
 alter table public.purchase_events enable row level security;
@@ -109,6 +130,7 @@ drop policy if exists "Users can update their own profile" on public.profiles;
 drop policy if exists "Users can read their own lesson progress" on public.lesson_progress;
 drop policy if exists "Users can insert their own lesson progress" on public.lesson_progress;
 drop policy if exists "Users can delete their own lesson progress" on public.lesson_progress;
+drop policy if exists "Authenticated users can read available lesson videos" on public.lesson_videos;
 drop policy if exists "Users can read their own learning activity" on public.learning_activity;
 drop policy if exists "Users can insert their own learning activity" on public.learning_activity;
 drop policy if exists "Users can delete their own learning activity" on public.learning_activity;
@@ -154,6 +176,12 @@ on public.lesson_progress
 for delete
 to authenticated
 using (auth.uid() = user_id);
+
+create policy "Authenticated users can read available lesson videos"
+on public.lesson_videos
+for select
+to authenticated
+using (is_available = true);
 
 create policy "Users can read their own learning activity"
 on public.learning_activity

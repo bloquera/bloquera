@@ -36,7 +36,7 @@ export function getLessonVideoKey(slug: string) {
   return `lessons/${slug}.mp4`;
 }
 
-export async function createLessonVideoUrl(slug: string) {
+export async function createLessonVideoUrl(key: string) {
   const env = getR2Env();
   const client = new S3Client({
     region: "auto",
@@ -51,7 +51,7 @@ export async function createLessonVideoUrl(slug: string) {
     client,
     new GetObjectCommand({
       Bucket: env.bucket,
-      Key: getLessonVideoKey(slug),
+      Key: key,
       ResponseContentDisposition: "inline",
       ResponseContentType: "video/mp4",
     }),
