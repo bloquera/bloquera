@@ -470,10 +470,15 @@ describe("activity route", () => {
     );
 
     expect(insert).toHaveBeenCalledWith({
+      activity_context: null,
       activity_type: "lesson_completion",
+      correct_count: null,
       created_at: "2026-03-25T18:00:00.000Z",
       lesson_slug: "wallet-basics",
       lesson_title: "Wallet Basics",
+      passed: null,
+      response_preview: null,
+      total_questions: null,
       user_id: "user-1",
     });
     expect(response.headers.get("set-cookie")).toBeNull();
