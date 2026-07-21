@@ -80,6 +80,10 @@ Before deploying to Vercel, configure these project environment variables:
 - `STRIPE_PRO_YEARLY_PRICE_ID`
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
+- `R2_ACCOUNT_ID`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET`
 
 Notes:
 
@@ -135,3 +139,23 @@ Every pull request should:
 - pass `npm run lint` and `npm run build`
 
 Detailed expectations live in [CONTRIBUTING.md](./CONTRIBUTING.md).
+## Lesson Videos
+
+Lesson videos are stored privately in Cloudflare R2. Upload an MP4 using its
+lesson slug:
+
+```bash
+npm run video:upload -- what-is-money ./videos/what-is-money.mp4
+```
+
+The uploader writes to `lessons/<lesson-slug>.mp4` and refuses to overwrite an
+existing object. To intentionally replace a video, add `--force`:
+
+```bash
+npm run video:upload -- what-is-money ./videos/what-is-money.mp4 --force
+```
+
+The R2 variables documented in `.env.example` must be present in `.env.local`.
+The API token needs Object Read & Write access scoped to the video bucket.
+For production, use a separate read-only token in the deployed app and keep the
+write-capable upload credentials local.
