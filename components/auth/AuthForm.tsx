@@ -58,14 +58,6 @@ export function AuthForm({
   const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
-    setError(getAuthErrorFromSearchParam(initialError));
-  }, [initialError]);
-
-  useEffect(() => {
-    setMessage(getAuthMessageFromSearchParam(initialMessage, nextPath));
-  }, [initialMessage, nextPath]);
-
-  useEffect(() => {
     if (resendCooldown <= 0) {
       return;
     }

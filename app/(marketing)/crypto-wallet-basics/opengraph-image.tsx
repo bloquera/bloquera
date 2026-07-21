@@ -2,7 +2,11 @@ import { renderGuideOpenGraphImage } from "@/components/marketing/GuideOpenGraph
 import { getPublicGuide } from "@/lib/public-guides";
 
 export const alt = "Crypto wallet basics with Bloquera";
-export { contentType, size } from "@/components/marketing/GuideOpenGraphImage";
+export const contentType = "image/png";
+export const size = {
+  width: 1200,
+  height: 630,
+};
 
 export default function CryptoWalletBasicsOpenGraphImage() {
   const guide = getPublicGuide("crypto-wallet-basics");
