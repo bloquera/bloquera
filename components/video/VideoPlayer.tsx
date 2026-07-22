@@ -1,11 +1,30 @@
+"use client";
+
+import { useRef } from "react";
+
 type VideoPlayerProps = {
   duration?: string;
   error?: string | null;
+  isLoading?: boolean;
+  onPlaybackError?: (currentTime: number) => void;
+  onRetry?: () => void;
+  resumeAt?: number;
   src?: string | null;
   title: string;
 };
 
-export function VideoPlayer({ duration, error, src, title }: VideoPlayerProps) {
+export function VideoPlayer({
+  duration,
+  error,
+  src,
+  isLoading = !src && !error,
+  onPlaybackError,
+  onRetry,
+  resumeAt = 0,
+  title,
+}: VideoPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   return (
     <div className="aspect-video overflow-hidden rounded-[1.75rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.2),transparent_28%),linear-gradient(145deg,rgba(24,24,27,1),rgba(10,10,10,0.95))]">
       {src ? (
@@ -13,8 +32,17 @@ export function VideoPlayer({ duration, error, src, title }: VideoPlayerProps) {
           aria-label={title}
           className="h-full w-full bg-black object-contain"
           controls
+          onError={(event) => onPlaybackError?.(event.currentTarget.currentTime)}
+          onLoadedMetadata={() => {
+            const video = videoRef.current;
+
+            if (video && resumeAt > 0) {
+              video.currentTime = resumeAt;
+            }
+          }}
           playsInline
           preload="metadata"
+          ref={videoRef}
           src={src}
         >
           Your browser does not support HTML video.
@@ -28,7 +56,11 @@ export function VideoPlayer({ duration, error, src, title }: VideoPlayerProps) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">
-                {error ? "Video unavailable" : "Preparing secure stream"}
+                {error
+                  ? "Video unavailable"
+                  : isLoading
+                    ? "Preparing secure stream"
+                    : "Ready to play"}
               </p>
               <h3 className="mt-2 max-w-2xl text-xl font-semibold text-white sm:text-2xl">
                 {title}
@@ -42,7 +74,9 @@ export function VideoPlayer({ duration, error, src, title }: VideoPlayerProps) {
           </div>
 
           <div className="flex items-center justify-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/10 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur">
+            <div
+              className={`flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/10 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur ${isLoading ? "animate-pulse" : ""}`}
+            >
               <svg
                 aria-hidden="true"
                 className="ml-1 h-8 w-8 fill-white"
@@ -55,8 +89,20 @@ export function VideoPlayer({ duration, error, src, title }: VideoPlayerProps) {
 
           <div className="max-w-2xl">
             <p className="text-sm leading-7 text-zinc-300 sm:text-base">
-              {error ?? "Your private playback link is being prepared."}
+              {error ??
+                (isLoading
+                  ? "Your private playback link is being prepared."
+                  : "The video is ready when you are.")}
             </p>
+            {error && onRetry ? (
+              <button
+                className="mt-4 rounded-full border border-orange-400/30 bg-orange-500/15 px-4 py-2 text-sm font-semibold text-orange-200 transition hover:bg-orange-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                onClick={onRetry}
+                type="button"
+              >
+                Try again
+              </button>
+            ) : null}
           </div>
         </div>
       )}

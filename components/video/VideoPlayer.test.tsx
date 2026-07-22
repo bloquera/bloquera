@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { VideoPlayer } from "@/components/video/VideoPlayer";
 
@@ -31,9 +31,11 @@ describe("VideoPlayer", () => {
   });
 
   it("announces playback preparation errors", () => {
+    const onRetry = vi.fn();
     render(
       <VideoPlayer
         error="This lesson video is not available yet."
+        onRetry={onRetry}
         title="What Is Money?"
       />,
     );
@@ -42,5 +44,40 @@ describe("VideoPlayer", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "This lesson video is not available yet.",
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it("reports native playback errors with the current position", () => {
+    const onPlaybackError = vi.fn();
+    render(
+      <VideoPlayer
+        onPlaybackError={onPlaybackError}
+        src="https://signed.example/video.mp4"
+        title="What Is Money?"
+      />,
+    );
+    const player = screen.getByLabelText("What Is Money?") as HTMLVideoElement;
+    Object.defineProperty(player, "currentTime", { configurable: true, value: 42 });
+
+    fireEvent.error(player);
+
+    expect(onPlaybackError).toHaveBeenCalledWith(42);
+  });
+
+  it("restores the playback position after a source refresh", () => {
+    render(
+      <VideoPlayer
+        resumeAt={42}
+        src="https://signed.example/refreshed.mp4"
+        title="What Is Money?"
+      />,
+    );
+    const player = screen.getByLabelText("What Is Money?") as HTMLVideoElement;
+
+    fireEvent.loadedMetadata(player);
+
+    expect(player.currentTime).toBe(42);
   });
 });

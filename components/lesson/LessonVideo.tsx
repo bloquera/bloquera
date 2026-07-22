@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { VideoPlayer } from "@/components/video/VideoPlayer";
 import { getApiErrorMessage } from "@/lib/client-api";
@@ -9,48 +9,94 @@ import type { Lesson } from "@/types/lesson";
 export function LessonVideo({ lesson }: { lesson: Lesson }) {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [resumeAt, setResumeAt] = useState(0);
+  const requestController = useRef<AbortController | null>(null);
+  const recoveryAttempts = useRef(0);
 
-  useEffect(() => {
+  const loadVideo = useCallback(async (resetPosition = false) => {
+    requestController.current?.abort();
     const controller = new AbortController();
+    requestController.current = controller;
 
-    async function loadVideo() {
-      setError(null);
-      setVideoUrl(null);
+    await Promise.resolve();
 
-      try {
-        const response = await fetch(
-          `/api/lessons/${encodeURIComponent(lesson.slug)}/video`,
-          { signal: controller.signal },
-        );
-
-        if (!response.ok) {
-          setError(
-            await getApiErrorMessage(response, {
-              fallbackMessage: "This lesson video is unavailable right now.",
-            }),
-          );
-          return;
-        }
-
-        const payload = (await response.json()) as { url?: unknown };
-
-        if (typeof payload.url !== "string" || payload.url.length === 0) {
-          setError("This lesson video is unavailable right now.");
-          return;
-        }
-
-        setVideoUrl(payload.url);
-      } catch (loadError) {
-        if (!(loadError instanceof DOMException && loadError.name === "AbortError")) {
-          setError("This lesson video is unavailable right now.");
-        }
-      }
+    if (controller.signal.aborted) {
+      return;
     }
 
-    void loadVideo();
+    if (resetPosition) {
+      setResumeAt(0);
+    }
+    setError(null);
+    setIsLoading(true);
+    setVideoUrl(null);
 
-    return () => controller.abort();
+    try {
+      const response = await fetch(
+        `/api/lessons/${encodeURIComponent(lesson.slug)}/video`,
+        { signal: controller.signal },
+      );
+
+      if (!response.ok) {
+        setError(
+          await getApiErrorMessage(response, {
+            fallbackMessage: "This lesson video is unavailable right now.",
+          }),
+        );
+        return;
+      }
+
+      const payload = (await response.json()) as { url?: unknown };
+
+      if (typeof payload.url !== "string" || payload.url.length === 0) {
+        setError("This lesson video is unavailable right now.");
+        return;
+      }
+
+      setVideoUrl(payload.url);
+    } catch (loadError) {
+      if (!(loadError instanceof DOMException && loadError.name === "AbortError")) {
+        setError("This lesson video is unavailable right now.");
+      }
+    } finally {
+      if (requestController.current === controller) {
+        setIsLoading(false);
+      }
+    }
   }, [lesson.slug]);
+
+  useEffect(() => {
+    recoveryAttempts.current = 0;
+    const requestTimer = window.setTimeout(() => {
+      void loadVideo(true);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(requestTimer);
+      requestController.current?.abort();
+    };
+  }, [loadVideo]);
+
+  function handlePlaybackError(currentTime: number) {
+    setResumeAt(Number.isFinite(currentTime) ? Math.max(0, currentTime) : 0);
+
+    if (recoveryAttempts.current < 1) {
+      recoveryAttempts.current += 1;
+      void loadVideo();
+      return;
+    }
+
+    setVideoUrl(null);
+    setError(
+      "Playback stopped unexpectedly. Refresh the secure link and try again.",
+    );
+  }
+
+  function handleRetry() {
+    recoveryAttempts.current = 0;
+    void loadVideo();
+  }
 
   return (
     <section className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-5 text-white">
@@ -72,6 +118,10 @@ export function LessonVideo({ lesson }: { lesson: Lesson }) {
         <VideoPlayer
           duration={lesson.duration}
           error={error}
+          isLoading={isLoading}
+          onPlaybackError={handlePlaybackError}
+          onRetry={handleRetry}
+          resumeAt={resumeAt}
           src={videoUrl}
           title={lesson.title}
         />
