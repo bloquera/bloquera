@@ -71,18 +71,70 @@ export function LessonVideo({ lesson }: { lesson: Lesson }) {
     }
   }, [lesson.slug]);
 
+  const loadSavedProgress = useCallback(
+    async (signal: AbortSignal) => {
+      try {
+        const response = await fetch(
+          `/api/lessons/${encodeURIComponent(lesson.slug)}/video-progress`,
+          { cache: "no-store", signal },
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json()) as {
+          completed?: unknown;
+          durationSeconds?: unknown;
+          positionSeconds?: unknown;
+        };
+        const positionSeconds = payload.positionSeconds;
+        const durationSeconds = payload.durationSeconds;
+
+        if (
+          typeof positionSeconds !== "number" ||
+          !Number.isFinite(positionSeconds) ||
+          positionSeconds <= 0 ||
+          typeof durationSeconds !== "number" ||
+          !Number.isFinite(durationSeconds) ||
+          durationSeconds <= 0
+        ) {
+          return;
+        }
+
+        lastSavedPosition.current = positionSeconds;
+        setResumeAt(
+          payload.completed === true
+            ? 0
+            : Math.min(positionSeconds, durationSeconds),
+        );
+      } catch (progressError) {
+        if (
+          !(progressError instanceof DOMException && progressError.name === "AbortError")
+        ) {
+          // Progress loading is best-effort and must not prevent video playback.
+        }
+      }
+    },
+    [lesson.slug],
+  );
+
   useEffect(() => {
     recoveryAttempts.current = 0;
     lastSavedPosition.current = 0;
+    const progressController = new AbortController();
     const requestTimer = window.setTimeout(() => {
-      void loadVideo(true);
+      void loadVideo(true).then(() =>
+        loadSavedProgress(progressController.signal),
+      );
     }, 0);
 
     return () => {
       window.clearTimeout(requestTimer);
+      progressController.abort();
       requestController.current?.abort();
     };
-  }, [loadVideo]);
+  }, [loadSavedProgress, loadVideo]);
 
   function handlePlaybackError(currentTime: number) {
     setResumeAt(Number.isFinite(currentTime) ? Math.max(0, currentTime) : 0);

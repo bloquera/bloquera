@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 export type VideoPlaybackProgress = {
   durationSeconds: number;
@@ -32,6 +32,14 @@ export function VideoPlayer({
   title,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+
+    if (video && video.readyState >= HTMLMediaElement.HAVE_METADATA && resumeAt > 0) {
+      video.currentTime = resumeAt;
+    }
+  }, [resumeAt, src]);
 
   return (
     <div className="aspect-video overflow-hidden rounded-[1.75rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.2),transparent_28%),linear-gradient(145deg,rgba(24,24,27,1),rgba(10,10,10,0.95))]">

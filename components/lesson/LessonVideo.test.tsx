@@ -19,6 +19,26 @@ function videoResponse(url: string) {
   });
 }
 
+function progressResponse(options?: {
+  completed?: boolean;
+  durationSeconds?: number;
+  positionSeconds?: number;
+}) {
+  return new Response(
+    JSON.stringify({
+      completed: options?.completed ?? false,
+      completedAt: null,
+      durationSeconds: options?.durationSeconds ?? 0,
+      positionSeconds: options?.positionSeconds ?? 0,
+      updatedAt: null,
+    }),
+    {
+      headers: { "Content-Type": "application/json" },
+      status: 200,
+    },
+  );
+}
+
 describe("LessonVideo", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -33,6 +53,7 @@ describe("LessonVideo", () => {
           status: 503,
         }),
       )
+      .mockResolvedValueOnce(progressResponse())
       .mockResolvedValueOnce(videoResponse("https://signed.example/retry.mp4"));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -47,13 +68,14 @@ describe("LessonVideo", () => {
         "https://signed.example/retry.mp4",
       );
     });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("refreshes the signed URL once after a playback error", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(videoResponse("https://signed.example/first.mp4"))
+      .mockResolvedValueOnce(progressResponse())
       .mockResolvedValueOnce(videoResponse("https://signed.example/refreshed.mp4"));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -71,7 +93,7 @@ describe("LessonVideo", () => {
         "https://signed.example/refreshed.mp4",
       );
     });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
 
     fireEvent.error(screen.getByLabelText("What Is Money?"));
 
@@ -80,13 +102,14 @@ describe("LessonVideo", () => {
         "Playback stopped unexpectedly. Refresh the secure link and try again.",
       ),
     ).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("saves progress every ten seconds and on pause or completion", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(videoResponse("https://signed.example/video.mp4"))
+      .mockResolvedValueOnce(progressResponse())
       .mockResolvedValue(new Response(JSON.stringify({ saved: true }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -113,9 +136,9 @@ describe("LessonVideo", () => {
     fireEvent.pause(player);
     fireEvent.ended(player);
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
     expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
+      3,
       "/api/lessons/what-is-money/video-progress",
       expect.objectContaining({
         body: JSON.stringify({ durationSeconds: 100, positionSeconds: 10 }),
@@ -123,18 +146,37 @@ describe("LessonVideo", () => {
       }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      3,
+      4,
       "/api/lessons/what-is-money/video-progress",
       expect.objectContaining({
         body: JSON.stringify({ durationSeconds: 100, positionSeconds: 15 }),
       }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      4,
+      5,
       "/api/lessons/what-is-money/video-progress",
       expect.objectContaining({
         body: JSON.stringify({ durationSeconds: 100, positionSeconds: 100 }),
       }),
     );
+  });
+
+  it("restores an incomplete video to its saved position", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(videoResponse("https://signed.example/video.mp4"))
+      .mockResolvedValueOnce(
+        progressResponse({ durationSeconds: 100, positionSeconds: 42 }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<LessonVideo lesson={lesson} />);
+
+    const player = (await screen.findByLabelText(
+      "What Is Money?",
+    )) as HTMLVideoElement;
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    fireEvent.loadedMetadata(player);
+    expect(player.currentTime).toBe(42);
   });
 });
