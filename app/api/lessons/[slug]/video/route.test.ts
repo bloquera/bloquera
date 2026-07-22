@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   getAuthenticatedServerSupabaseOrError: vi.fn(),
   hasProAccessForCurrentUser: vi.fn(),
   getLessonBySlug: vi.fn(),
+  createLessonCaptionsUrl: vi.fn(),
   createLessonVideoUrl: vi.fn(),
   from: vi.fn(),
   select: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock("@/lib/account-status", () => ({
 }));
 vi.mock("@/lib/lessons", () => ({ getLessonBySlug: mocks.getLessonBySlug }));
 vi.mock("@/lib/r2", () => ({
+  createLessonCaptionsUrl: mocks.createLessonCaptionsUrl,
   createLessonVideoUrl: mocks.createLessonVideoUrl,
   R2ConfigurationError: class R2ConfigurationError extends Error {},
 }));
@@ -39,6 +41,7 @@ describe("GET /api/lessons/[slug]/video", () => {
     mocks.getAuthenticatedServerSupabaseOrError.mockReset();
     mocks.hasProAccessForCurrentUser.mockReset();
     mocks.getLessonBySlug.mockReset();
+    mocks.createLessonCaptionsUrl.mockReset();
     mocks.createLessonVideoUrl.mockReset();
     mocks.from.mockReset();
     mocks.select.mockReset();
@@ -54,7 +57,12 @@ describe("GET /api/lessons/[slug]/video", () => {
     mocks.select.mockReturnValue(videoQuery);
     mocks.eq.mockReturnValue(videoQuery);
     mocks.maybeSingle.mockResolvedValue({
-      data: { video_key: "lessons/what-is-money.mp4" },
+      data: {
+        captions_key: null,
+        captions_label: "English",
+        captions_language: "en",
+        video_key: "lessons/what-is-money.mp4",
+      },
       error: null,
     });
 
@@ -64,6 +72,9 @@ describe("GET /api/lessons/[slug]/video", () => {
     });
     mocks.getLessonBySlug.mockReturnValue({ slug: "what-is-money" });
     mocks.createLessonVideoUrl.mockResolvedValue("https://signed.example/video.mp4");
+    mocks.createLessonCaptionsUrl.mockResolvedValue(
+      "https://signed.example/captions.vtt",
+    );
   });
 
   it("requires an authenticated user", async () => {
@@ -83,11 +94,41 @@ describe("GET /api/lessons/[slug]/video", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     await expect(response.json()).resolves.toEqual({
+      captions: null,
       url: "https://signed.example/video.mp4",
     });
     expect(mocks.from).toHaveBeenCalledWith("lesson_videos");
     expect(mocks.createLessonVideoUrl).toHaveBeenCalledWith(
       "lessons/what-is-money.mp4",
+    );
+  });
+
+  it("returns signed caption metadata when captions are configured", async () => {
+    mocks.maybeSingle.mockResolvedValue({
+      data: {
+        captions_key: "lessons/what-is-money.en.vtt",
+        captions_label: "English",
+        captions_language: "en",
+        video_key: "lessons/what-is-money.mp4",
+      },
+      error: null,
+    });
+
+    const response = await GET(
+      new Request("http://localhost"),
+      context("what-is-money"),
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      captions: {
+        label: "English",
+        language: "en",
+        url: "https://signed.example/captions.vtt",
+      },
+      url: "https://signed.example/video.mp4",
+    });
+    expect(mocks.createLessonCaptionsUrl).toHaveBeenCalledWith(
+      "lessons/what-is-money.en.vtt",
     );
   });
 

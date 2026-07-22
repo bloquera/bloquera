@@ -10,6 +10,11 @@ import { getApiErrorMessage } from "@/lib/client-api";
 import type { Lesson } from "@/types/lesson";
 
 export function LessonVideo({ lesson }: { lesson: Lesson }) {
+  const [captions, setCaptions] = useState<{
+    label: string;
+    language: string;
+    src: string;
+  } | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,6 +41,7 @@ export function LessonVideo({ lesson }: { lesson: Lesson }) {
     setError(null);
     setIsLoading(true);
     setVideoUrl(null);
+    setCaptions(null);
 
     try {
       const response = await fetch(
@@ -52,13 +58,32 @@ export function LessonVideo({ lesson }: { lesson: Lesson }) {
         return;
       }
 
-      const payload = (await response.json()) as { url?: unknown };
+      const payload = (await response.json()) as {
+        captions?: {
+          label?: unknown;
+          language?: unknown;
+          url?: unknown;
+        } | null;
+        url?: unknown;
+      };
 
       if (typeof payload.url !== "string" || payload.url.length === 0) {
         setError("This lesson video is unavailable right now.");
         return;
       }
 
+      if (
+        payload.captions &&
+        typeof payload.captions.url === "string" &&
+        typeof payload.captions.language === "string" &&
+        typeof payload.captions.label === "string"
+      ) {
+        setCaptions({
+          label: payload.captions.label,
+          language: payload.captions.language,
+          src: payload.captions.url,
+        });
+      }
       setVideoUrl(payload.url);
     } catch (loadError) {
       if (!(loadError instanceof DOMException && loadError.name === "AbortError")) {
@@ -214,6 +239,7 @@ export function LessonVideo({ lesson }: { lesson: Lesson }) {
 
       <div className="mt-5">
         <VideoPlayer
+          captions={captions}
           duration={lesson.duration}
           error={error}
           isLoading={isLoading}

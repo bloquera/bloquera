@@ -16,6 +16,7 @@ describe("VideoPlayer", () => {
 
     expect(player.tagName).toBe("VIDEO");
     expect(player).toHaveAttribute("controls");
+    expect(player).toHaveAttribute("crossorigin", "anonymous");
     expect(player).toHaveAttribute("playsinline");
     expect(player).toHaveAttribute("preload", "metadata");
     expect(player).toHaveAttribute("src", "https://signed.example/video.mp4");
@@ -119,5 +120,42 @@ describe("VideoPlayer", () => {
       positionSeconds: 100,
       reason: "ended",
     });
+  });
+
+  it("renders signed captions when a track is available", () => {
+    const { container } = render(
+      <VideoPlayer
+        captions={{
+          label: "English",
+          language: "en",
+          src: "https://signed.example/captions.vtt",
+        }}
+        src="https://signed.example/video.mp4"
+        title="What Is Money?"
+      />,
+    );
+
+    const track = container.querySelector("track");
+    expect(track).toHaveAttribute("kind", "captions");
+    expect(track).toHaveAttribute("label", "English");
+    expect(track).toHaveAttribute("srclang", "en");
+    expect(track).toHaveAttribute("src", "https://signed.example/captions.vtt");
+  });
+
+  it("changes native playback speed", () => {
+    render(
+      <VideoPlayer
+        src="https://signed.example/video.mp4"
+        title="What Is Money?"
+      />,
+    );
+    const player = screen.getByLabelText("What Is Money?") as HTMLVideoElement;
+
+    fireEvent.change(screen.getByLabelText("Playback speed"), {
+      target: { value: "1.5" },
+    });
+
+    expect(player.playbackRate).toBe(1.5);
+    expect(screen.getByLabelText("Playback speed")).toHaveValue("1.5");
   });
 });

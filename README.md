@@ -139,6 +139,7 @@ Every pull request should:
 - pass `npm run lint` and `npm run build`
 
 Detailed expectations live in [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 ## Lesson Videos
 
 Lesson videos are stored privately in Cloudflare R2. Upload an MP4 using its
@@ -162,3 +163,15 @@ The uploader also needs `NEXT_PUBLIC_SUPABASE_URL` and
 The API token needs Object Read & Write access scoped to the video bucket.
 For production, use a separate read-only token in the deployed app and keep the
 write-capable upload credentials local.
+
+### Captions
+
+Captions use WebVTT files stored privately in the same R2 bucket. Upload a
+`.vtt` object, then set these fields on the matching `lesson_videos` row:
+
+- `captions_key`: the exact R2 object key
+- `captions_language`: a BCP 47 language code such as `en`
+- `captions_label`: the student-facing label such as `English`
+
+Browser caption requests require the R2 bucket CORS policy to allow `GET` from
+the app's local and production origins.

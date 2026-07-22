@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 export type VideoPlaybackProgress = {
   durationSeconds: number;
@@ -9,6 +9,11 @@ export type VideoPlaybackProgress = {
 };
 
 type VideoPlayerProps = {
+  captions?: {
+    label: string;
+    language: string;
+    src: string;
+  } | null;
   duration?: string;
   error?: string | null;
   isLoading?: boolean;
@@ -21,6 +26,7 @@ type VideoPlayerProps = {
 };
 
 export function VideoPlayer({
+  captions,
   duration,
   error,
   src,
@@ -32,6 +38,8 @@ export function VideoPlayer({
   title,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const speedControlId = useId();
+  const [playbackRate, setPlaybackRate] = useState(1);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -44,46 +52,89 @@ export function VideoPlayer({
   return (
     <div className="aspect-video overflow-hidden rounded-[1.75rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.2),transparent_28%),linear-gradient(145deg,rgba(24,24,27,1),rgba(10,10,10,0.95))]">
       {src ? (
-        <video
-          aria-label={title}
-          className="h-full w-full bg-black object-contain"
-          controls
-          onEnded={(event) =>
-            onProgress?.({
-              durationSeconds: event.currentTarget.duration,
-              positionSeconds: event.currentTarget.duration,
-              reason: "ended",
-            })
-          }
-          onError={(event) => onPlaybackError?.(event.currentTarget.currentTime)}
-          onLoadedMetadata={() => {
-            const video = videoRef.current;
-
-            if (video && resumeAt > 0) {
-              video.currentTime = resumeAt;
+        <div className="relative h-full">
+          <video
+            aria-label={title}
+            className="h-full w-full bg-black object-contain"
+            controls
+            crossOrigin="anonymous"
+            onEnded={(event) =>
+              onProgress?.({
+                durationSeconds: event.currentTarget.duration,
+                positionSeconds: event.currentTarget.duration,
+                reason: "ended",
+              })
             }
-          }}
-          onPause={(event) =>
-            onProgress?.({
-              durationSeconds: event.currentTarget.duration,
-              positionSeconds: event.currentTarget.currentTime,
-              reason: "pause",
-            })
-          }
-          playsInline
-          preload="metadata"
-          ref={videoRef}
-          src={src}
-          onTimeUpdate={(event) =>
-            onProgress?.({
-              durationSeconds: event.currentTarget.duration,
-              positionSeconds: event.currentTarget.currentTime,
-              reason: "timeupdate",
-            })
-          }
-        >
-          Your browser does not support HTML video.
-        </video>
+            onError={(event) =>
+              onPlaybackError?.(event.currentTarget.currentTime)
+            }
+            onLoadedMetadata={() => {
+              const video = videoRef.current;
+
+              if (video) {
+                video.playbackRate = playbackRate;
+
+                if (resumeAt > 0) {
+                  video.currentTime = resumeAt;
+                }
+              }
+            }}
+            onPause={(event) =>
+              onProgress?.({
+                durationSeconds: event.currentTarget.duration,
+                positionSeconds: event.currentTarget.currentTime,
+                reason: "pause",
+              })
+            }
+            onTimeUpdate={(event) =>
+              onProgress?.({
+                durationSeconds: event.currentTarget.duration,
+                positionSeconds: event.currentTarget.currentTime,
+                reason: "timeupdate",
+              })
+            }
+            playsInline
+            preload="metadata"
+            ref={videoRef}
+            src={src}
+          >
+            {captions ? (
+              <track
+                default
+                kind="captions"
+                label={captions.label}
+                src={captions.src}
+                srcLang={captions.language}
+              />
+            ) : null}
+            Your browser does not support HTML video.
+          </video>
+          <div className="absolute right-3 top-3 rounded-full border border-white/15 bg-black/70 px-3 py-1.5 text-xs text-white backdrop-blur">
+            <label className="sr-only" htmlFor={speedControlId}>
+              Playback speed
+            </label>
+            <select
+              aria-label="Playback speed"
+              className="bg-transparent font-semibold text-white outline-none"
+              id={speedControlId}
+              onChange={(event) => {
+                const nextRate = Number(event.currentTarget.value);
+                setPlaybackRate(nextRate);
+
+                if (videoRef.current) {
+                  videoRef.current.playbackRate = nextRate;
+                }
+              }}
+              value={playbackRate}
+            >
+              {[0.75, 1, 1.25, 1.5, 2].map((rate) => (
+                <option className="bg-zinc-950" key={rate} value={rate}>
+                  {rate}x
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       ) : (
         <div
           aria-live="polite"

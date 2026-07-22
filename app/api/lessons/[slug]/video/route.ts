@@ -3,7 +3,11 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedServerSupabaseOrError, jsonError } from "@/lib/api-route";
 import { hasProAccessForCurrentUser } from "@/lib/account-status";
 import { getLessonBySlug } from "@/lib/lessons";
-import { createLessonVideoUrl, R2ConfigurationError } from "@/lib/r2";
+import {
+  createLessonCaptionsUrl,
+  createLessonVideoUrl,
+  R2ConfigurationError,
+} from "@/lib/r2";
 
 export async function GET(
   _request: Request,
@@ -30,7 +34,7 @@ export async function GET(
 
   const { data: video, error: videoError } = await authResult.supabase
     .from("lesson_videos")
-    .select("video_key")
+    .select("video_key, captions_key, captions_language, captions_label")
     .eq("lesson_slug", lesson.slug)
     .eq("is_available", true)
     .maybeSingle();
@@ -44,10 +48,24 @@ export async function GET(
   }
 
   try {
-    const url = await createLessonVideoUrl(video.video_key);
+    const [url, captionsUrl] = await Promise.all([
+      createLessonVideoUrl(video.video_key),
+      video.captions_key
+        ? createLessonCaptionsUrl(video.captions_key)
+        : Promise.resolve(null),
+    ]);
 
     return NextResponse.json(
-      { url },
+      {
+        captions: captionsUrl
+          ? {
+              label: video.captions_label || "English",
+              language: video.captions_language || "en",
+              url: captionsUrl,
+            }
+          : null,
+        url,
+      },
       {
         headers: {
           "Cache-Control": "private, no-store",

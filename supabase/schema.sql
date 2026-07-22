@@ -31,6 +31,9 @@ create table if not exists public.lesson_progress (
 create table if not exists public.lesson_videos (
   lesson_slug text primary key,
   video_key text not null unique,
+  captions_key text,
+  captions_language text not null default 'en',
+  captions_label text not null default 'English',
   duration_seconds integer,
   is_available boolean not null default true,
   created_at timestamptz not null default timezone('utc'::text, now()),
@@ -55,6 +58,9 @@ create table if not exists public.video_progress (
 );
 
 alter table public.lesson_videos add column if not exists video_key text;
+alter table public.lesson_videos add column if not exists captions_key text;
+alter table public.lesson_videos add column if not exists captions_language text not null default 'en';
+alter table public.lesson_videos add column if not exists captions_label text not null default 'English';
 alter table public.lesson_videos add column if not exists duration_seconds integer;
 alter table public.lesson_videos add column if not exists is_available boolean not null default true;
 alter table public.lesson_videos add column if not exists created_at timestamptz not null default timezone('utc'::text, now());

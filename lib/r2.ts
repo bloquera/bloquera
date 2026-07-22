@@ -3,7 +3,7 @@ import "server-only";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-const SIGNED_VIDEO_URL_TTL_SECONDS = 15 * 60;
+const SIGNED_MEDIA_URL_TTL_SECONDS = 15 * 60;
 
 type R2Env = {
   accountId: string;
@@ -36,7 +36,7 @@ export function getLessonVideoKey(slug: string) {
   return `lessons/${slug}.mp4`;
 }
 
-export async function createLessonVideoUrl(key: string) {
+async function createSignedMediaUrl(key: string, contentType: string) {
   const env = getR2Env();
   const client = new S3Client({
     region: "auto",
@@ -53,8 +53,16 @@ export async function createLessonVideoUrl(key: string) {
       Bucket: env.bucket,
       Key: key,
       ResponseContentDisposition: "inline",
-      ResponseContentType: "video/mp4",
+      ResponseContentType: contentType,
     }),
-    { expiresIn: SIGNED_VIDEO_URL_TTL_SECONDS },
+    { expiresIn: SIGNED_MEDIA_URL_TTL_SECONDS },
   );
+}
+
+export function createLessonVideoUrl(key: string) {
+  return createSignedMediaUrl(key, "video/mp4");
+}
+
+export function createLessonCaptionsUrl(key: string) {
+  return createSignedMediaUrl(key, "text/vtt; charset=utf-8");
 }

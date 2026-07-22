@@ -8,6 +8,7 @@ vi.mock("@aws-sdk/s3-request-presigner", () => ({
 }));
 
 import {
+  createLessonCaptionsUrl,
   createLessonVideoUrl,
   getLessonVideoKey,
   R2ConfigurationError,
@@ -38,6 +39,21 @@ describe("R2 lesson videos", () => {
         input: expect.objectContaining({
           Bucket: "bloquera-videos",
           Key: "lessons/what-is-money.mp4",
+        }),
+      }),
+      { expiresIn: 900 },
+    );
+  });
+
+  it("signs WebVTT captions with the correct response type", async () => {
+    await createLessonCaptionsUrl("lessons/what-is-money.en.vtt");
+
+    expect(mocks.getSignedUrl).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        input: expect.objectContaining({
+          Key: "lessons/what-is-money.en.vtt",
+          ResponseContentType: "text/vtt; charset=utf-8",
         }),
       }),
       { expiresIn: 900 },

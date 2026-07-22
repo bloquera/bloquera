@@ -179,4 +179,34 @@ describe("LessonVideo", () => {
     fireEvent.loadedMetadata(player);
     expect(player.currentTime).toBe(42);
   });
+
+  it("passes signed caption metadata to the player", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            captions: {
+              label: "English",
+              language: "en",
+              url: "https://signed.example/captions.vtt",
+            },
+            url: "https://signed.example/video.mp4",
+          }),
+          { headers: { "Content-Type": "application/json" }, status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(progressResponse());
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { container } = render(<LessonVideo lesson={lesson} />);
+
+    await screen.findByLabelText("What Is Money?");
+    await waitFor(() => {
+      expect(container.querySelector("track")).toHaveAttribute(
+        "src",
+        "https://signed.example/captions.vtt",
+      );
+    });
+  });
 });
