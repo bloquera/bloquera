@@ -2,11 +2,18 @@
 
 import { useRef } from "react";
 
+export type VideoPlaybackProgress = {
+  durationSeconds: number;
+  positionSeconds: number;
+  reason: "ended" | "pause" | "timeupdate";
+};
+
 type VideoPlayerProps = {
   duration?: string;
   error?: string | null;
   isLoading?: boolean;
   onPlaybackError?: (currentTime: number) => void;
+  onProgress?: (progress: VideoPlaybackProgress) => void;
   onRetry?: () => void;
   resumeAt?: number;
   src?: string | null;
@@ -19,6 +26,7 @@ export function VideoPlayer({
   src,
   isLoading = !src && !error,
   onPlaybackError,
+  onProgress,
   onRetry,
   resumeAt = 0,
   title,
@@ -32,6 +40,13 @@ export function VideoPlayer({
           aria-label={title}
           className="h-full w-full bg-black object-contain"
           controls
+          onEnded={(event) =>
+            onProgress?.({
+              durationSeconds: event.currentTarget.duration,
+              positionSeconds: event.currentTarget.duration,
+              reason: "ended",
+            })
+          }
           onError={(event) => onPlaybackError?.(event.currentTarget.currentTime)}
           onLoadedMetadata={() => {
             const video = videoRef.current;
@@ -40,10 +55,24 @@ export function VideoPlayer({
               video.currentTime = resumeAt;
             }
           }}
+          onPause={(event) =>
+            onProgress?.({
+              durationSeconds: event.currentTarget.duration,
+              positionSeconds: event.currentTarget.currentTime,
+              reason: "pause",
+            })
+          }
           playsInline
           preload="metadata"
           ref={videoRef}
           src={src}
+          onTimeUpdate={(event) =>
+            onProgress?.({
+              durationSeconds: event.currentTarget.duration,
+              positionSeconds: event.currentTarget.currentTime,
+              reason: "timeupdate",
+            })
+          }
         >
           Your browser does not support HTML video.
         </video>

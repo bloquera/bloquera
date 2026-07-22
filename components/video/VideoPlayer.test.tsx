@@ -80,4 +80,44 @@ describe("VideoPlayer", () => {
 
     expect(player.currentTime).toBe(42);
   });
+
+  it("reports time, pause, and completion progress", () => {
+    const onProgress = vi.fn();
+    render(
+      <VideoPlayer
+        onProgress={onProgress}
+        src="https://signed.example/video.mp4"
+        title="What Is Money?"
+      />,
+    );
+    const player = screen.getByLabelText("What Is Money?") as HTMLVideoElement;
+    Object.defineProperty(player, "currentTime", {
+      configurable: true,
+      value: 25,
+    });
+    Object.defineProperty(player, "duration", {
+      configurable: true,
+      value: 100,
+    });
+
+    fireEvent.timeUpdate(player);
+    fireEvent.pause(player);
+    fireEvent.ended(player);
+
+    expect(onProgress).toHaveBeenNthCalledWith(1, {
+      durationSeconds: 100,
+      positionSeconds: 25,
+      reason: "timeupdate",
+    });
+    expect(onProgress).toHaveBeenNthCalledWith(2, {
+      durationSeconds: 100,
+      positionSeconds: 25,
+      reason: "pause",
+    });
+    expect(onProgress).toHaveBeenNthCalledWith(3, {
+      durationSeconds: 100,
+      positionSeconds: 100,
+      reason: "ended",
+    });
+  });
 });

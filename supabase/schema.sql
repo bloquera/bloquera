@@ -39,11 +39,32 @@ create table if not exists public.lesson_videos (
     check (duration_seconds is null or duration_seconds > 0)
 );
 
+create table if not exists public.video_progress (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  lesson_slug text not null,
+  position_seconds double precision not null default 0,
+  duration_seconds double precision not null,
+  completed_at timestamptz,
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now()),
+  primary key (user_id, lesson_slug),
+  constraint video_progress_position_check check (position_seconds >= 0),
+  constraint video_progress_duration_check check (duration_seconds > 0),
+  constraint video_progress_position_duration_check
+    check (position_seconds <= duration_seconds)
+);
+
 alter table public.lesson_videos add column if not exists video_key text;
 alter table public.lesson_videos add column if not exists duration_seconds integer;
 alter table public.lesson_videos add column if not exists is_available boolean not null default true;
 alter table public.lesson_videos add column if not exists created_at timestamptz not null default timezone('utc'::text, now());
 alter table public.lesson_videos add column if not exists updated_at timestamptz not null default timezone('utc'::text, now());
+
+alter table public.video_progress add column if not exists position_seconds double precision not null default 0;
+alter table public.video_progress add column if not exists duration_seconds double precision;
+alter table public.video_progress add column if not exists completed_at timestamptz;
+alter table public.video_progress add column if not exists created_at timestamptz not null default timezone('utc'::text, now());
+alter table public.video_progress add column if not exists updated_at timestamptz not null default timezone('utc'::text, now());
 
 create unique index if not exists lesson_videos_video_key_key
 on public.lesson_videos (video_key);
@@ -120,6 +141,7 @@ set public = excluded.public;
 alter table public.profiles enable row level security;
 alter table public.lesson_progress enable row level security;
 alter table public.lesson_videos enable row level security;
+alter table public.video_progress enable row level security;
 alter table public.learning_activity enable row level security;
 alter table public.subscriptions enable row level security;
 alter table public.purchase_events enable row level security;
@@ -131,6 +153,9 @@ drop policy if exists "Users can read their own lesson progress" on public.lesso
 drop policy if exists "Users can insert their own lesson progress" on public.lesson_progress;
 drop policy if exists "Users can delete their own lesson progress" on public.lesson_progress;
 drop policy if exists "Authenticated users can read available lesson videos" on public.lesson_videos;
+drop policy if exists "Users can read their own video progress" on public.video_progress;
+drop policy if exists "Users can insert their own video progress" on public.video_progress;
+drop policy if exists "Users can update their own video progress" on public.video_progress;
 drop policy if exists "Users can read their own learning activity" on public.learning_activity;
 drop policy if exists "Users can insert their own learning activity" on public.learning_activity;
 drop policy if exists "Users can delete their own learning activity" on public.learning_activity;
@@ -182,6 +207,25 @@ on public.lesson_videos
 for select
 to authenticated
 using (is_available = true);
+
+create policy "Users can read their own video progress"
+on public.video_progress
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "Users can insert their own video progress"
+on public.video_progress
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "Users can update their own video progress"
+on public.video_progress
+for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
 
 create policy "Users can read their own learning activity"
 on public.learning_activity

@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { VideoPlayer } from "@/components/video/VideoPlayer";
+import {
+  VideoPlayer,
+  type VideoPlaybackProgress,
+} from "@/components/video/VideoPlayer";
 import { getApiErrorMessage } from "@/lib/client-api";
 import type { Lesson } from "@/types/lesson";
 
@@ -13,6 +16,8 @@ export function LessonVideo({ lesson }: { lesson: Lesson }) {
   const [resumeAt, setResumeAt] = useState(0);
   const requestController = useRef<AbortController | null>(null);
   const recoveryAttempts = useRef(0);
+  const lastSavedPosition = useRef(0);
+  const progressSaveQueue = useRef<Promise<void>>(Promise.resolve());
 
   const loadVideo = useCallback(async (resetPosition = false) => {
     requestController.current?.abort();
@@ -68,6 +73,7 @@ export function LessonVideo({ lesson }: { lesson: Lesson }) {
 
   useEffect(() => {
     recoveryAttempts.current = 0;
+    lastSavedPosition.current = 0;
     const requestTimer = window.setTimeout(() => {
       void loadVideo(true);
     }, 0);
@@ -98,6 +104,46 @@ export function LessonVideo({ lesson }: { lesson: Lesson }) {
     void loadVideo();
   }
 
+  function handleProgress(progress: VideoPlaybackProgress) {
+    const { durationSeconds, positionSeconds, reason } = progress;
+
+    if (
+      !Number.isFinite(positionSeconds) ||
+      positionSeconds < 0 ||
+      !Number.isFinite(durationSeconds) ||
+      durationSeconds <= 0
+    ) {
+      return;
+    }
+
+    const shouldSave =
+      reason === "pause" ||
+      reason === "ended" ||
+      Math.abs(positionSeconds - lastSavedPosition.current) >= 10;
+
+    if (!shouldSave) {
+      return;
+    }
+
+    lastSavedPosition.current = positionSeconds;
+
+    progressSaveQueue.current = progressSaveQueue.current
+      .then(async () => {
+        await fetch(
+          `/api/lessons/${encodeURIComponent(lesson.slug)}/video-progress`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ durationSeconds, positionSeconds }),
+            keepalive: true,
+          },
+        );
+      })
+      .catch(() => {
+        // Playback must remain uninterrupted if progress persistence is unavailable.
+      });
+  }
+
   return (
     <section className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-5 text-white">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -120,6 +166,7 @@ export function LessonVideo({ lesson }: { lesson: Lesson }) {
           error={error}
           isLoading={isLoading}
           onPlaybackError={handlePlaybackError}
+          onProgress={handleProgress}
           onRetry={handleRetry}
           resumeAt={resumeAt}
           src={videoUrl}
