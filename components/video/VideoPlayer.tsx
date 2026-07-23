@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 
 export type VideoPlaybackProgress = {
   durationSeconds: number;
@@ -38,8 +44,64 @@ export function VideoPlayer({
   title,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const retryButtonRef = useRef<HTMLButtonElement>(null);
   const speedControlId = useId();
+  const shortcutsId = useId();
+  const [captionsEnabled, setCaptionsEnabled] = useState(true);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [statusMessage, setStatusMessage] = useState("");
+
+  function applyCaptionMode(enabled: boolean) {
+    const textTrack = videoRef.current?.textTracks?.[0];
+
+    if (textTrack) {
+      textTrack.mode = enabled ? "showing" : "hidden";
+    }
+  }
+
+  function toggleCaptions() {
+    const nextEnabled = !captionsEnabled;
+    setCaptionsEnabled(nextEnabled);
+    applyCaptionMode(nextEnabled);
+    setStatusMessage(`Captions ${nextEnabled ? "on" : "off"}.`);
+  }
+
+  function handleVideoKeyDown(event: KeyboardEvent<HTMLVideoElement>) {
+    if (event.altKey || event.ctrlKey || event.metaKey) {
+      return;
+    }
+
+    const video = event.currentTarget;
+    const key = event.key.toLowerCase();
+
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      const offset = event.key === "ArrowLeft" ? -10 : 10;
+      const duration = Number.isFinite(video.duration)
+        ? video.duration
+        : Number.POSITIVE_INFINITY;
+      video.currentTime = Math.min(
+        duration,
+        Math.max(0, video.currentTime + offset),
+      );
+      setStatusMessage(
+        `${offset > 0 ? "Skipped forward" : "Skipped back"} 10 seconds.`,
+      );
+      return;
+    }
+
+    if (key === "m") {
+      event.preventDefault();
+      video.muted = !video.muted;
+      setStatusMessage(`Sound ${video.muted ? "muted" : "on"}.`);
+      return;
+    }
+
+    if (key === "c" && captions) {
+      event.preventDefault();
+      toggleCaptions();
+    }
+  }
 
   useEffect(() => {
     const video = videoRef.current;
@@ -49,13 +111,23 @@ export function VideoPlayer({
     }
   }, [resumeAt, src]);
 
+  useEffect(() => {
+    if (error && onRetry) {
+      retryButtonRef.current?.focus();
+    }
+  }, [error, onRetry]);
+
   return (
     <div className="aspect-video overflow-hidden rounded-[1.75rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.2),transparent_28%),linear-gradient(145deg,rgba(24,24,27,1),rgba(10,10,10,0.95))]">
       {src ? (
         <div className="relative h-full">
           <video
+            aria-describedby={shortcutsId}
+            aria-keyshortcuts={
+              captions ? "ArrowLeft ArrowRight M C" : "ArrowLeft ArrowRight M"
+            }
             aria-label={title}
-            className="h-full w-full bg-black object-contain"
+            className="h-full w-full bg-black object-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-400"
             controls
             crossOrigin="anonymous"
             onEnded={(event) =>
@@ -73,6 +145,7 @@ export function VideoPlayer({
 
               if (video) {
                 video.playbackRate = playbackRate;
+                applyCaptionMode(captionsEnabled);
 
                 if (resumeAt > 0) {
                   video.currentTime = resumeAt;
@@ -86,6 +159,7 @@ export function VideoPlayer({
                 reason: "pause",
               })
             }
+            onKeyDown={handleVideoKeyDown}
             onTimeUpdate={(event) =>
               onProgress?.({
                 durationSeconds: event.currentTarget.duration,
@@ -97,29 +171,51 @@ export function VideoPlayer({
             preload="metadata"
             ref={videoRef}
             src={src}
+            tabIndex={0}
           >
             {captions ? (
               <track
                 default
                 kind="captions"
                 label={captions.label}
+                onLoad={() => applyCaptionMode(captionsEnabled)}
                 src={captions.src}
                 srcLang={captions.language}
               />
             ) : null}
             Your browser does not support HTML video.
           </video>
-          <div className="absolute right-3 top-3 rounded-full border border-white/15 bg-black/70 px-3 py-1.5 text-xs text-white backdrop-blur">
+          <p className="sr-only" id={shortcutsId}>
+            Use Left and Right Arrow to skip 10 seconds, M to mute, and
+            {captions ? " C to toggle captions." : " the native controls to play."}
+          </p>
+          <div
+            aria-label="Video settings"
+            className="absolute right-3 top-3 flex items-center gap-2 rounded-full border border-white/15 bg-black/70 px-2 py-1.5 text-xs text-white backdrop-blur"
+            role="group"
+          >
+            {captions ? (
+              <button
+                aria-label={`Turn captions ${captionsEnabled ? "off" : "on"}`}
+                aria-pressed={captionsEnabled}
+                className="rounded-full px-2 py-1 font-bold transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                onClick={toggleCaptions}
+                type="button"
+              >
+                CC
+              </button>
+            ) : null}
             <label className="sr-only" htmlFor={speedControlId}>
               Playback speed
             </label>
             <select
               aria-label="Playback speed"
-              className="bg-transparent font-semibold text-white outline-none"
+              className="rounded bg-transparent px-1 py-1 font-semibold text-white outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
               id={speedControlId}
               onChange={(event) => {
                 const nextRate = Number(event.currentTarget.value);
                 setPlaybackRate(nextRate);
+                setStatusMessage(`Playback speed ${nextRate} times.`);
 
                 if (videoRef.current) {
                   videoRef.current.playbackRate = nextRate;
@@ -134,6 +230,9 @@ export function VideoPlayer({
               ))}
             </select>
           </div>
+          <p aria-live="polite" className="sr-only" role="status">
+            {statusMessage}
+          </p>
         </div>
       ) : (
         <div
@@ -163,7 +262,7 @@ export function VideoPlayer({
 
           <div className="flex items-center justify-center">
             <div
-              className={`flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/10 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur ${isLoading ? "animate-pulse" : ""}`}
+              className={`flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/10 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur ${isLoading ? "motion-safe:animate-pulse" : ""}`}
             >
               <svg
                 aria-hidden="true"
@@ -186,6 +285,7 @@ export function VideoPlayer({
               <button
                 className="mt-4 rounded-full border border-orange-400/30 bg-orange-500/15 px-4 py-2 text-sm font-semibold text-orange-200 transition hover:bg-orange-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
                 onClick={onRetry}
+                ref={retryButtonRef}
                 type="button"
               >
                 Try again

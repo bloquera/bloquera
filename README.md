@@ -175,3 +175,15 @@ Captions use WebVTT files stored privately in the same R2 bucket. Upload a
 
 Browser caption requests require the R2 bucket CORS policy to allow `GET` from
 the app's local and production origins.
+
+### Video keyboard controls
+
+When the video has focus:
+
+- `Left Arrow`: skip back 10 seconds
+- `Right Arrow`: skip forward 10 seconds
+- `M`: mute or unmute
+- `C`: turn captions on or off when a caption track is available
+
+The settings toolbar also exposes keyboard-focusable caption and playback-speed
+controls, with changes announced to screen readers.

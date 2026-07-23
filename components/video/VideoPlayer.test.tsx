@@ -157,5 +157,81 @@ describe("VideoPlayer", () => {
 
     expect(player.playbackRate).toBe(1.5);
     expect(screen.getByLabelText("Playback speed")).toHaveValue("1.5");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Playback speed 1.5 times.",
+    );
+  });
+
+  it("supports keyboard seeking and mute shortcuts", () => {
+    render(
+      <VideoPlayer
+        src="https://signed.example/video.mp4"
+        title="What Is Money?"
+      />,
+    );
+    const player = screen.getByLabelText("What Is Money?") as HTMLVideoElement;
+    Object.defineProperty(player, "currentTime", {
+      configurable: true,
+      value: 20,
+      writable: true,
+    });
+    Object.defineProperty(player, "duration", {
+      configurable: true,
+      value: 100,
+    });
+
+    fireEvent.keyDown(player, { key: "ArrowRight" });
+    expect(player.currentTime).toBe(30);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Skipped forward 10 seconds.",
+    );
+
+    fireEvent.keyDown(player, { key: "ArrowLeft" });
+    expect(player.currentTime).toBe(20);
+
+    fireEvent.keyDown(player, { key: "m" });
+    expect(player.muted).toBe(true);
+    expect(screen.getByRole("status")).toHaveTextContent("Sound muted.");
+  });
+
+  it("offers a keyboard-accessible captions toggle", () => {
+    render(
+      <VideoPlayer
+        captions={{
+          label: "English",
+          language: "en",
+          src: "https://signed.example/captions.vtt",
+        }}
+        src="https://signed.example/video.mp4"
+        title="What Is Money?"
+      />,
+    );
+    const player = screen.getByLabelText("What Is Money?") as HTMLVideoElement;
+    const textTrack = { mode: "showing" };
+    Object.defineProperty(player, "textTracks", {
+      configurable: true,
+      value: [textTrack],
+    });
+
+    fireEvent.keyDown(player, { key: "c" });
+
+    expect(textTrack.mode).toBe("hidden");
+    expect(screen.getByRole("button", { name: "Turn captions on" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Captions off.");
+  });
+
+  it("moves focus to retry when a playback error is shown", () => {
+    render(
+      <VideoPlayer
+        error="Playback failed."
+        onRetry={vi.fn()}
+        title="What Is Money?"
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Try again" })).toHaveFocus();
   });
 });
