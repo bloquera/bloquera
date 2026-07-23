@@ -80,6 +80,10 @@ Before deploying to Vercel, configure these project environment variables:
 - `STRIPE_PRO_YEARLY_PRICE_ID`
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
+- `R2_ACCOUNT_ID`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET`
 
 Notes:
 
@@ -135,3 +139,51 @@ Every pull request should:
 - pass `npm run lint` and `npm run build`
 
 Detailed expectations live in [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## Lesson Videos
+
+Lesson videos are stored privately in Cloudflare R2. Upload an MP4 using its
+lesson slug:
+
+```bash
+npm run video:upload -- what-is-money ./videos/what-is-money.mp4
+```
+
+The uploader writes to `lessons/<lesson-slug>.mp4`, registers that key in the
+Supabase `lesson_videos` table, and refuses to overwrite an existing object. To
+intentionally replace a video, add `--force`:
+
+```bash
+npm run video:upload -- what-is-money ./videos/what-is-money.mp4 --force
+```
+
+The R2 variables documented in `.env.example` must be present in `.env.local`.
+The uploader also needs `NEXT_PUBLIC_SUPABASE_URL` and
+`SUPABASE_SERVICE_ROLE_KEY`. Apply `supabase/schema.sql` before the first upload.
+The API token needs Object Read & Write access scoped to the video bucket.
+For production, use a separate read-only token in the deployed app and keep the
+write-capable upload credentials local.
+
+### Captions
+
+Captions use WebVTT files stored privately in the same R2 bucket. Upload a
+`.vtt` object, then set these fields on the matching `lesson_videos` row:
+
+- `captions_key`: the exact R2 object key
+- `captions_language`: a BCP 47 language code such as `en`
+- `captions_label`: the student-facing label such as `English`
+
+Browser caption requests require the R2 bucket CORS policy to allow `GET` from
+the app's local and production origins.
+
+### Video keyboard controls
+
+When the video has focus:
+
+- `Left Arrow`: skip back 10 seconds
+- `Right Arrow`: skip forward 10 seconds
+- `M`: mute or unmute
+- `C`: turn captions on or off when a caption track is available
+
+The settings toolbar also exposes keyboard-focusable caption and playback-speed
+controls, with changes announced to screen readers.
