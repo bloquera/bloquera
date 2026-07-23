@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { LessonContent } from "@/components/lesson/LessonContent";
 import { LessonTutorPanel } from "@/components/lesson/LessonTutorPanel";
-import { LessonVideoPlaceholder } from "@/components/lesson/LessonVideoPlaceholder";
+import { LessonVideo } from "@/components/lesson/LessonVideo";
 import type { Lesson } from "@/types/lesson";
 
 const LESSON_TUTOR_OPEN_CLASS = "lesson-tutor-open";
@@ -33,7 +33,7 @@ export function LessonWorkspace({
         data-testid="lesson-layout"
       >
         <div className="space-y-6">
-          <LessonVideoPlaceholder lesson={lesson} />
+          <LessonVideo lesson={lesson} />
           <LessonContent lesson={lesson} />
         </div>
         <aside className="space-y-6">
