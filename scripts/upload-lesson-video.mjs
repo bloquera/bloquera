@@ -1,5 +1,5 @@
 import { createReadStream } from "node:fs";
-import { open, stat } from "node:fs/promises";
+import { open, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -10,32 +10,97 @@ import { createClient } from "@supabase/supabase-js";
 const { loadEnvConfig } = nextEnv;
 
 const MAX_SINGLE_UPLOAD_BYTES = 5 * 1024 * 1024 * 1024;
-const LESSON_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const LANGUAGE_PATTERN = /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/;
 
-export function getLessonVideoKey(slug) {
-  if (!LESSON_SLUG_PATTERN.test(slug)) {
+function assertSlug(slug, label) {
+  if (!SLUG_PATTERN.test(slug)) {
     throw new Error(
-      "Lesson slug must contain lowercase letters, numbers, and single hyphens only.",
+      `${label} slug must contain lowercase letters, numbers, and single hyphens only.`,
+    );
+  }
+}
+
+export function getLessonVideoKey(courseSlug, moduleSlug, lessonSlug) {
+  assertSlug(courseSlug, "Course");
+  assertSlug(moduleSlug, "Module");
+  assertSlug(lessonSlug, "Lesson");
+  return `courses/${courseSlug}/${moduleSlug}/${lessonSlug}.mp4`;
+}
+
+export function getLessonCaptionsKey(
+  courseSlug,
+  moduleSlug,
+  lessonSlug,
+  language,
+) {
+  assertSlug(courseSlug, "Course");
+  assertSlug(moduleSlug, "Module");
+  assertSlug(lessonSlug, "Lesson");
+
+  if (!LANGUAGE_PATTERN.test(language)) {
+    throw new Error(
+      "Caption language must be a valid language tag such as en or en-GB.",
     );
   }
 
-  return `lessons/${slug}.mp4`;
+  return `courses/${courseSlug}/${moduleSlug}/captions/${lessonSlug}.${language.toLowerCase()}.vtt`;
 }
 
 export function parseUploadArguments(args) {
-  const force = args.includes("--force");
-  const positional = args.filter((argument) => argument !== "--force");
+  const options = {
+    captionsPath: undefined,
+    force: false,
+    language: "en",
+    label: "English",
+  };
+  const positional = [];
 
-  if (positional.length !== 2) {
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+
+    if (argument === "--force") {
+      options.force = true;
+    } else if (
+      argument === "--captions" ||
+      argument === "--language" ||
+      argument === "--label"
+    ) {
+      const value = args[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error(`${argument} requires a value.`);
+      }
+
+      if (argument === "--captions") options.captionsPath = value;
+      if (argument === "--language") options.language = value;
+      if (argument === "--label") options.label = value;
+      index += 1;
+    } else if (argument.startsWith("--")) {
+      throw new Error(`Unknown option: ${argument}`);
+    } else {
+      positional.push(argument);
+    }
+  }
+
+  if (positional.length !== 4) {
     throw new Error(
-      "Usage: npm run video:upload -- <lesson-slug> <video.mp4> [--force]",
+      "Usage: npm run video:upload -- <course-slug> <module-slug> <lesson-slug> <video.mp4> [--captions <captions.vtt>] [--language <code>] [--label <label>] [--force]",
     );
   }
 
+  if (
+    !options.captionsPath &&
+    args.some((argument) => argument === "--language" || argument === "--label")
+  ) {
+    throw new Error("--language and --label can only be used with --captions.");
+  }
+
   return {
-    slug: positional[0],
-    videoPath: positional[1],
-    force,
+    courseSlug: positional[0],
+    moduleSlug: positional[1],
+    lessonSlug: positional[2],
+    videoPath: positional[3],
+    ...options,
   };
 }
 
@@ -86,6 +151,17 @@ async function assertMp4(videoPath) {
   }
 }
 
+async function assertWebVtt(captionsPath) {
+  if (path.extname(captionsPath).toLowerCase() !== ".vtt") {
+    throw new Error("Lesson captions must use the .vtt file extension.");
+  }
+
+  const contents = await readFile(captionsPath, "utf8");
+  if (!contents.trimStart().startsWith("WEBVTT")) {
+    throw new Error("The selected captions file is not valid WebVTT.");
+  }
+}
+
 function isMissingObject(error) {
   return (
     error?.$metadata?.httpStatusCode === 404 ||
@@ -94,24 +170,59 @@ function isMissingObject(error) {
   );
 }
 
-export async function uploadLessonVideo({ slug, videoPath, force = false }) {
-  const key = getLessonVideoKey(slug);
+async function assertObjectDoesNotExist(client, bucket, key) {
+  try {
+    await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    throw new Error(
+      `An R2 object already exists at ${key}. Pass --force to replace it.`,
+    );
+  } catch (error) {
+    if (!isMissingObject(error)) {
+      throw error;
+    }
+  }
+}
+
+export async function uploadLessonVideo({
+  courseSlug,
+  moduleSlug,
+  lessonSlug,
+  videoPath,
+  captionsPath,
+  language = "en",
+  label = "English",
+  force = false,
+}) {
+  const key = getLessonVideoKey(courseSlug, moduleSlug, lessonSlug);
+  const captionsKey = captionsPath
+    ? getLessonCaptionsKey(courseSlug, moduleSlug, lessonSlug, language)
+    : undefined;
   const absoluteVideoPath = path.resolve(videoPath);
   const fileStats = await stat(absoluteVideoPath);
 
   if (!fileStats.isFile()) {
     throw new Error("The supplied video path is not a file.");
   }
-
   if (fileStats.size === 0) {
     throw new Error("The selected video is empty.");
   }
-
   if (fileStats.size > MAX_SINGLE_UPLOAD_BYTES) {
     throw new Error("The selected video exceeds the 5 GiB single-upload limit.");
   }
-
   await assertMp4(absoluteVideoPath);
+
+  const absoluteCaptionsPath = captionsPath
+    ? path.resolve(captionsPath)
+    : undefined;
+  let captionsStats;
+
+  if (absoluteCaptionsPath) {
+    captionsStats = await stat(absoluteCaptionsPath);
+    if (!captionsStats.isFile() || captionsStats.size === 0) {
+      throw new Error("The supplied captions path must be a non-empty file.");
+    }
+    await assertWebVtt(absoluteCaptionsPath);
+  }
 
   const env = getR2UploadConfig();
   const supabaseEnv = getSupabaseUploadConfig();
@@ -125,15 +236,9 @@ export async function uploadLessonVideo({ slug, videoPath, force = false }) {
   });
 
   if (!force) {
-    try {
-      await client.send(new HeadObjectCommand({ Bucket: env.bucket, Key: key }));
-      throw new Error(
-        `An R2 object already exists at ${key}. Pass --force to replace it.`,
-      );
-    } catch (error) {
-      if (!isMissingObject(error)) {
-        throw error;
-      }
+    await assertObjectDoesNotExist(client, env.bucket, key);
+    if (captionsKey) {
+      await assertObjectDoesNotExist(client, env.bucket, captionsKey);
     }
   }
 
@@ -145,10 +250,30 @@ export async function uploadLessonVideo({ slug, videoPath, force = false }) {
       ContentLength: fileStats.size,
       ContentType: "video/mp4",
       Metadata: {
-        "lesson-slug": slug,
+        "course-slug": courseSlug,
+        "module-slug": moduleSlug,
+        "lesson-slug": lessonSlug,
       },
     }),
   );
+
+  if (absoluteCaptionsPath && captionsKey && captionsStats) {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: env.bucket,
+        Key: captionsKey,
+        Body: createReadStream(absoluteCaptionsPath),
+        ContentLength: captionsStats.size,
+        ContentType: "text/vtt; charset=utf-8",
+        Metadata: {
+          "course-slug": courseSlug,
+          "module-slug": moduleSlug,
+          "lesson-slug": lessonSlug,
+          language: language.toLowerCase(),
+        },
+      }),
+    );
+  }
 
   const supabase = createClient(supabaseEnv.url, supabaseEnv.serviceRoleKey, {
     auth: {
@@ -156,25 +281,34 @@ export async function uploadLessonVideo({ slug, videoPath, force = false }) {
       persistSession: false,
     },
   });
-  const { error: metadataError } = await supabase.from("lesson_videos").upsert(
-    {
-      lesson_slug: slug,
-      video_key: key,
-      is_available: true,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "lesson_slug" },
-  );
+  const metadata = {
+    lesson_slug: lessonSlug,
+    video_key: key,
+    is_available: true,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (captionsKey) {
+    metadata.captions_key = captionsKey;
+    metadata.captions_language = language.toLowerCase();
+    metadata.captions_label = label;
+  }
+
+  const { error: metadataError } = await supabase
+    .from("lesson_videos")
+    .upsert(metadata, { onConflict: "lesson_slug" });
 
   if (metadataError) {
     throw new Error(
-      `The video was uploaded to ${key}, but Supabase metadata could not be saved: ${metadataError.message}`,
+      `Media was uploaded to R2, but Supabase metadata could not be saved: ${metadataError.message}`,
     );
   }
 
   return {
     bucket: env.bucket,
     bytes: fileStats.size,
+    captionsBytes: captionsStats?.size,
+    captionsKey,
     key,
     metadataSaved: true,
   };
@@ -189,7 +323,12 @@ async function main() {
   console.log(
     `Uploaded ${(result.bytes / 1024 / 1024).toFixed(2)} MiB to r2://${result.bucket}/${result.key}`,
   );
-  console.log(`Saved video metadata for ${options.slug} in Supabase.`);
+  if (result.captionsKey) {
+    console.log(
+      `Uploaded captions to r2://${result.bucket}/${result.captionsKey}`,
+    );
+  }
+  console.log(`Saved video metadata for ${options.lessonSlug} in Supabase.`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

@@ -143,18 +143,19 @@ Detailed expectations live in [CONTRIBUTING.md](./CONTRIBUTING.md).
 ## Lesson Videos
 
 Lesson videos are stored privately in Cloudflare R2. Upload an MP4 using its
-lesson slug:
+course, module, and lesson slugs:
 
 ```bash
-npm run video:upload -- what-is-money ./videos/what-is-money.mp4
+npm run video:upload -- bitcoin foundations what-is-money ./videos/what-is-money.mp4
 ```
 
-The uploader writes to `lessons/<lesson-slug>.mp4`, registers that key in the
-Supabase `lesson_videos` table, and refuses to overwrite an existing object. To
-intentionally replace a video, add `--force`:
+The uploader writes to
+`courses/<course-slug>/<module-slug>/<lesson-slug>.mp4`, registers that exact
+key in the Supabase `lesson_videos` table, and refuses to overwrite an existing
+object. To intentionally replace a video, add `--force`:
 
 ```bash
-npm run video:upload -- what-is-money ./videos/what-is-money.mp4 --force
+npm run video:upload -- bitcoin foundations what-is-money ./videos/what-is-money.mp4 --force
 ```
 
 The R2 variables documented in `.env.example` must be present in `.env.local`.
@@ -166,12 +167,16 @@ write-capable upload credentials local.
 
 ### Captions
 
-Captions use WebVTT files stored privately in the same R2 bucket. Upload a
-`.vtt` object, then set these fields on the matching `lesson_videos` row:
+Captions use WebVTT files stored privately in the same R2 bucket. Pass a
+caption file to upload it alongside the video and register its metadata:
 
-- `captions_key`: the exact R2 object key
-- `captions_language`: a BCP 47 language code such as `en`
-- `captions_label`: the student-facing label such as `English`
+```bash
+npm run video:upload -- bitcoin foundations what-is-money ./videos/what-is-money.mp4 --captions ./captions/what-is-money.en.vtt
+```
+
+The default language is `en` and the default label is `English`. Override them
+with `--language en-GB --label "English (UK)"`. Caption objects are stored at
+`courses/<course-slug>/<module-slug>/captions/<lesson-slug>.<language>.vtt`.
 
 Browser caption requests require the R2 bucket CORS policy to allow `GET` from
 the app's local and production origins.
