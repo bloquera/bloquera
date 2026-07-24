@@ -32,10 +32,6 @@ function getR2Env(): R2Env {
   return { accountId, accessKeyId, secretAccessKey, bucket };
 }
 
-export function getLessonVideoKey(slug: string) {
-  return `lessons/${slug}.mp4`;
-}
-
 async function createSignedMediaUrl(key: string, contentType: string) {
   const env = getR2Env();
   const client = new S3Client({
