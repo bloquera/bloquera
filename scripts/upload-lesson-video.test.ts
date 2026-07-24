@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getLessonCaptionsKey,
   getLessonVideoKey,
   getR2UploadConfig,
   getSupabaseUploadConfig,
@@ -8,27 +9,93 @@ import {
 } from "./upload-lesson-video.mjs";
 
 describe("lesson video uploader", () => {
-  it("builds the object key used by lesson playback", () => {
-    expect(getLessonVideoKey("what-is-money")).toBe("lessons/what-is-money.mp4");
-  });
-
-  it("rejects unsafe lesson slugs", () => {
-    expect(() => getLessonVideoKey("../private/video")).toThrow(/slug/i);
-    expect(() => getLessonVideoKey("What-Is-Money")).toThrow(/slug/i);
-  });
-
-  it("parses the optional overwrite flag", () => {
+  it("builds the course-aware object key used by lesson playback", () => {
     expect(
-      parseUploadArguments(["what-is-money", "./video.mp4", "--force"]),
+      getLessonVideoKey("bitcoin", "foundations", "what-is-money"),
+    ).toBe("courses/bitcoin/foundations/what-is-money.mp4");
+  });
+
+  it("builds a caption key inside the module captions folder", () => {
+    expect(
+      getLessonCaptionsKey("bitcoin", "foundations", "what-is-money", "en-GB"),
+    ).toBe("courses/bitcoin/foundations/captions/what-is-money.en-gb.vtt");
+  });
+
+  it("rejects unsafe destination slugs and caption languages", () => {
+    expect(() =>
+      getLessonVideoKey("../private", "foundations", "what-is-money"),
+    ).toThrow(/course slug/i);
+    expect(() =>
+      getLessonVideoKey("bitcoin", "Foundations", "what-is-money"),
+    ).toThrow(/module slug/i);
+    expect(() =>
+      getLessonVideoKey("bitcoin", "foundations", "What-Is-Money"),
+    ).toThrow(/lesson slug/i);
+    expect(() =>
+      getLessonCaptionsKey(
+        "bitcoin",
+        "foundations",
+        "what-is-money",
+        "../en",
+      ),
+    ).toThrow(/language/i);
+  });
+
+  it("parses captions metadata and the optional overwrite flag", () => {
+    expect(
+      parseUploadArguments([
+        "bitcoin",
+        "foundations",
+        "what-is-money",
+        "./video.mp4",
+        "--captions",
+        "./captions.vtt",
+        "--language",
+        "en-GB",
+        "--label",
+        "English (UK)",
+        "--force",
+      ]),
     ).toEqual({
+      captionsPath: "./captions.vtt",
+      courseSlug: "bitcoin",
       force: true,
-      slug: "what-is-money",
+      label: "English (UK)",
+      language: "en-GB",
+      lessonSlug: "what-is-money",
+      moduleSlug: "foundations",
       videoPath: "./video.mp4",
     });
   });
 
-  it("requires exactly a slug and a path", () => {
+  it("uses English caption defaults when only a caption path is supplied", () => {
+    expect(
+      parseUploadArguments([
+        "bitcoin",
+        "foundations",
+        "what-is-money",
+        "./video.mp4",
+        "--captions",
+        "./captions.vtt",
+      ]),
+    ).toMatchObject({ language: "en", label: "English" });
+  });
+
+  it("requires every destination slug and a video path", () => {
     expect(() => parseUploadArguments(["what-is-money"])).toThrow(/usage/i);
+  });
+
+  it("rejects caption metadata without a caption file", () => {
+    expect(() =>
+      parseUploadArguments([
+        "bitcoin",
+        "foundations",
+        "what-is-money",
+        "./video.mp4",
+        "--language",
+        "en-GB",
+      ]),
+    ).toThrow(/captions/i);
   });
 
   it("requires every R2 credential", () => {

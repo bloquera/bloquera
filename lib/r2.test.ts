@@ -10,7 +10,6 @@ vi.mock("@aws-sdk/s3-request-presigner", () => ({
 import {
   createLessonCaptionsUrl,
   createLessonVideoUrl,
-  getLessonVideoKey,
   R2ConfigurationError,
 } from "@/lib/r2";
 
@@ -24,21 +23,17 @@ describe("R2 lesson videos", () => {
     mocks.getSignedUrl.mockResolvedValue("https://signed.example/video.mp4");
   });
 
-  it("uses a deterministic lesson object key", () => {
-    expect(getLessonVideoKey("what-is-money")).toBe("lessons/what-is-money.mp4");
-  });
-
   it("creates a 15-minute signed read URL", async () => {
-    await expect(createLessonVideoUrl("lessons/what-is-money.mp4")).resolves.toBe(
-      "https://signed.example/video.mp4",
-    );
+    await expect(
+      createLessonVideoUrl("courses/bitcoin/foundations/what-is-money.mp4"),
+    ).resolves.toBe("https://signed.example/video.mp4");
 
     expect(mocks.getSignedUrl).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         input: expect.objectContaining({
           Bucket: "bloquera-videos",
-          Key: "lessons/what-is-money.mp4",
+          Key: "courses/bitcoin/foundations/what-is-money.mp4",
         }),
       }),
       { expiresIn: 900 },
@@ -46,13 +41,15 @@ describe("R2 lesson videos", () => {
   });
 
   it("signs WebVTT captions with the correct response type", async () => {
-    await createLessonCaptionsUrl("lessons/what-is-money.en.vtt");
+    await createLessonCaptionsUrl(
+      "courses/bitcoin/foundations/captions/what-is-money.en.vtt",
+    );
 
     expect(mocks.getSignedUrl).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         input: expect.objectContaining({
-          Key: "lessons/what-is-money.en.vtt",
+          Key: "courses/bitcoin/foundations/captions/what-is-money.en.vtt",
           ResponseContentType: "text/vtt; charset=utf-8",
         }),
       }),
@@ -63,9 +60,9 @@ describe("R2 lesson videos", () => {
   it("fails closed when credentials are missing", async () => {
     vi.stubEnv("R2_SECRET_ACCESS_KEY", "");
 
-    await expect(createLessonVideoUrl("lessons/what-is-money.mp4")).rejects.toBeInstanceOf(
-      R2ConfigurationError,
-    );
+    await expect(
+      createLessonVideoUrl("courses/bitcoin/foundations/what-is-money.mp4"),
+    ).rejects.toBeInstanceOf(R2ConfigurationError);
     expect(mocks.getSignedUrl).not.toHaveBeenCalled();
   });
 });
