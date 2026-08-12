@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { useLearningHistory } from "@/hooks/useLearningHistory";
 import {
@@ -23,6 +23,7 @@ export function BillingActions({
   checkoutLabel,
 }: BillingActionsProps) {
   const { recordConversionEvent } = useLearningHistory();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [loadingAction, setLoadingAction] = useState<
     PlanKey | "portal" | null
@@ -47,7 +48,7 @@ export function BillingActions({
         | null;
 
       if (response.status === 401) {
-        window.location.assign("/auth/login?next=/purchases");
+        router.push("/auth/login?next=/purchases");
         return;
       }
 
@@ -84,7 +85,7 @@ export function BillingActions({
     } finally {
       setLoadingAction(null);
     }
-  }, [recordConversionEvent]);
+  }, [recordConversionEvent, router]);
 
   const openPortal = useCallback(async () => {
     setLoadingAction("portal");
@@ -99,7 +100,7 @@ export function BillingActions({
         | null;
 
       if (response.status === 401) {
-        window.location.assign("/auth/login?next=/purchases");
+        router.push("/auth/login?next=/purchases");
         return;
       }
 
@@ -127,7 +128,7 @@ export function BillingActions({
     } finally {
       setLoadingAction(null);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     const requestedPlan = searchParams.get("plan");

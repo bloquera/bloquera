@@ -81,7 +81,10 @@ test.describe("account happy paths", () => {
     });
     await expect
       .poll(async () =>
-        avatarInput.evaluate((input) => input.files?.[0]?.name ?? null),
+        avatarInput.evaluate(
+          (input) =>
+            (input as HTMLInputElement).files?.[0]?.name ?? null,
+        ),
       )
       .toBe("avatar.png");
     const saveButton = profileDetailsSection.locator('button[type="submit"]').first();
