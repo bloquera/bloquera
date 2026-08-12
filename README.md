@@ -40,16 +40,16 @@ Local `.env.local` should point to the local project:
 ```env
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=https://your-local-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_local_supabase_anon_key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_local_supabase_publishable_key
 SUPABASE_SERVICE_ROLE_KEY=your_local_supabase_service_role_key
 ```
 
-Vercel environment variables should point to the production project:
+Vercel production environment variables should point to the production project:
 
 ```env
-NEXT_PUBLIC_SITE_URL=https://bloquera-chi.vercel.app
+NEXT_PUBLIC_SITE_URL=https://bloquera.io
 NEXT_PUBLIC_SUPABASE_URL=https://your-production-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_production_supabase_anon_key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_production_supabase_publishable_key
 SUPABASE_SERVICE_ROLE_KEY=your_production_supabase_service_role_key
 ```
 
@@ -57,8 +57,9 @@ Supabase URL configuration should also match each environment:
 
 - local project `Site URL`: `http://localhost:3000`
 - local project redirect URL: `http://localhost:3000/auth/callback`
-- production project `Site URL`: `https://bloquera-chi.vercel.app`
-- production project redirect URL: `https://bloquera-chi.vercel.app/auth/callback`
+- production project `Site URL`: `https://bloquera.io`
+- production project redirect URL: `https://bloquera.io/auth/callback`
+- preview redirect URL: `https://preview.bloquera.io/auth/callback`
 
 Notes:
 
@@ -72,7 +73,7 @@ Before deploying to Vercel, configure these project environment variables:
 
 - `NEXT_PUBLIC_SITE_URL`
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`

@@ -13,8 +13,8 @@ export default defineConfig({
   },
   webServer: {
     command:
-      "env NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_ANON_KEY= SUPABASE_SERVICE_ROLE_KEY= E2E_AUTH_BYPASS=1 npm run build && " +
-      `env NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_ANON_KEY= SUPABASE_SERVICE_ROLE_KEY= E2E_AUTH_BYPASS=1 npm run start -- --hostname 127.0.0.1 --port ${PORT}`,
+      "env NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= SUPABASE_SERVICE_ROLE_KEY= E2E_AUTH_BYPASS=1 npm run build && " +
+      `env NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= SUPABASE_SERVICE_ROLE_KEY= E2E_AUTH_BYPASS=1 npm run start -- --hostname 127.0.0.1 --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: "pipe",
@@ -22,7 +22,7 @@ export default defineConfig({
     env: {
       ...process.env,
       NEXT_PUBLIC_SUPABASE_URL: "",
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: "",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
       SUPABASE_SERVICE_ROLE_KEY: "",
       E2E_AUTH_BYPASS: "1",
     },
