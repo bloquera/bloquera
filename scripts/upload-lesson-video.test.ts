@@ -101,6 +101,7 @@ describe("lesson video uploader", () => {
   it("requires every R2 credential", () => {
     expect(() =>
       getR2UploadConfig({
+        ...process.env,
         R2_ACCOUNT_ID: "account-id",
         R2_ACCESS_KEY_ID: "access-key",
         R2_SECRET_ACCESS_KEY: "",
@@ -112,6 +113,7 @@ describe("lesson video uploader", () => {
   it("requires server-side Supabase credentials for metadata", () => {
     expect(() =>
       getSupabaseUploadConfig({
+        ...process.env,
         NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
         SUPABASE_SERVICE_ROLE_KEY: "",
       }),
