@@ -40,7 +40,7 @@ Local `.env.local` should point to the local project:
 ```env
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=https://your-local-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_local_supabase_anon_key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_local_supabase_publishable_key
 SUPABASE_SERVICE_ROLE_KEY=your_local_supabase_service_role_key
 ```
 
@@ -49,7 +49,7 @@ Vercel production environment variables should point to the production project:
 ```env
 NEXT_PUBLIC_SITE_URL=https://bloquera.io
 NEXT_PUBLIC_SUPABASE_URL=https://your-production-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_production_supabase_anon_key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_production_supabase_publishable_key
 SUPABASE_SERVICE_ROLE_KEY=your_production_supabase_service_role_key
 ```
 
@@ -73,7 +73,7 @@ Before deploying to Vercel, configure these project environment variables:
 
 - `NEXT_PUBLIC_SITE_URL`
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
