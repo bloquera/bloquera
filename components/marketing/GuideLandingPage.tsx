@@ -1,10 +1,85 @@
 import Script from "next/script";
 import Link from "next/link";
+import type { Route } from "next";
 
-import type { PublicGuide } from "@/lib/public-guides";
+import { publicGuides, type PublicGuide } from "@/lib/public-guides";
 import { absoluteUrl } from "@/lib/seo";
 
+const guideConnections = {
+  "learn-crypto": {
+    curriculumHref: "/learn",
+    curriculumLabel: "Explore the full curriculum",
+    relatedGuideIds: [
+      "bitcoin-for-beginners",
+      "crypto-wallet-basics",
+      "crypto-security-basics",
+    ],
+  },
+  "bitcoin-for-beginners": {
+    curriculumHref: "/learn/module/foundations" as Route,
+    curriculumLabel: "Start the Bitcoin foundations module",
+    relatedGuideIds: [
+      "what-is-bitcoin",
+      "crypto-wallet-basics",
+      "how-crypto-transactions-work",
+    ],
+  },
+  "crypto-wallet-basics": {
+    curriculumHref: "/learn/module/wallets-and-ownership" as Route,
+    curriculumLabel: "Explore wallets and ownership lessons",
+    relatedGuideIds: [
+      "crypto-security-basics",
+      "how-crypto-transactions-work",
+      "bitcoin-for-beginners",
+    ],
+  },
+  "what-is-bitcoin": {
+    curriculumHref: "/learn/what-is-bitcoin" as Route,
+    curriculumLabel: "Continue with the What Is Bitcoin lesson",
+    relatedGuideIds: [
+      "bitcoin-for-beginners",
+      "learn-crypto",
+      "how-crypto-transactions-work",
+    ],
+  },
+  "how-crypto-transactions-work": {
+    curriculumHref: "/learn/module/transactions" as Route,
+    curriculumLabel: "Explore the transactions module",
+    relatedGuideIds: [
+      "crypto-wallet-basics",
+      "crypto-security-basics",
+      "what-is-bitcoin",
+    ],
+  },
+  "crypto-security-basics": {
+    curriculumHref: "/learn/module/safety-and-mistakes" as Route,
+    curriculumLabel: "Explore safety and mistakes lessons",
+    relatedGuideIds: [
+      "crypto-wallet-basics",
+      "how-crypto-transactions-work",
+      "bitcoin-for-beginners",
+    ],
+  },
+} as const satisfies Record<
+  PublicGuide["id"],
+  {
+    curriculumHref: Route;
+    curriculumLabel: string;
+    relatedGuideIds: readonly PublicGuide["id"][];
+  }
+>;
+
 export function GuideLandingPage({ guide }: { guide: PublicGuide }) {
+  const connection = guideConnections[guide.id];
+  const relatedGuides = connection.relatedGuideIds.map((id) => {
+    const relatedGuide = publicGuides.find((candidate) => candidate.id === id);
+
+    if (!relatedGuide) {
+      throw new Error(`Missing related public guide: ${id}`);
+    }
+
+    return relatedGuide;
+  });
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -124,6 +199,40 @@ export function GuideLandingPage({ guide }: { guide: PublicGuide }) {
             </div>
           </section>
 
+          <section aria-labelledby="related-guides-heading">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-zinc-500">
+              Keep exploring
+            </p>
+            <h2
+              id="related-guides-heading"
+              className="mt-3 text-3xl font-semibold tracking-tight text-white"
+            >
+              Related beginner guides
+            </h2>
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              {relatedGuides.map((relatedGuide) => (
+                <Link
+                  key={relatedGuide.id}
+                  href={relatedGuide.href}
+                  className="rounded-[1.5rem] border border-white/10 bg-white/5 p-6 transition hover:border-orange-500/30 hover:bg-white/[0.08]"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-300">
+                    {relatedGuide.eyebrow}
+                  </p>
+                  <h3 className="mt-3 text-xl font-semibold text-white">
+                    {relatedGuide.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-zinc-400">
+                    {relatedGuide.summary}
+                  </p>
+                  <span className="mt-5 inline-flex text-sm font-semibold text-orange-300">
+                    Read this guide
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+
           <section className="rounded-[2rem] border border-orange-500/20 bg-orange-500/10 p-8">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-300">
               Ready to go deeper?
@@ -138,8 +247,14 @@ export function GuideLandingPage({ guide }: { guide: PublicGuide }) {
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href="/auth/register?next=%2Flearn"
+                href={connection.curriculumHref}
                 className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-black transition hover:bg-orange-400"
+              >
+                {connection.curriculumLabel}
+              </Link>
+              <Link
+                href="/auth/register?next=%2Flearn"
+                className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
               >
                 Create free account
               </Link>
