@@ -249,7 +249,7 @@ export default async function PricingPage() {
             product.
           </p>
           <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {publicGuides.slice(0, 3).map((guide) => (
+            {publicGuides.map((guide) => (
               <Link
                 key={guide.id}
                 href={guide.href}

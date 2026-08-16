@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { publicGuides } from "@/lib/public-guides";
+
 export function Footer() {
   return (
     <footer className="border-t border-white/10 bg-black">
@@ -11,9 +13,11 @@ export function Footer() {
         <nav className="flex flex-wrap gap-5">
           <Link href="/">Home</Link>
           <Link href="/pricing">Pricing</Link>
-          <Link href="/learn-crypto">Learn Crypto</Link>
-          <Link href="/bitcoin-for-beginners">Bitcoin Guide</Link>
-          <Link href="/crypto-wallet-basics">Wallet Basics</Link>
+          {publicGuides.map((guide) => (
+            <Link key={guide.id} href={guide.href}>
+              {guide.eyebrow}
+            </Link>
+          ))}
           <Link href="/learn">Curriculum</Link>
           <Link href="/auth/login">Log in</Link>
         </nav>
