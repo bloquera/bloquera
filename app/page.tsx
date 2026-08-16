@@ -65,6 +65,12 @@ export default async function Page() {
         "@type": "Organization",
         name: "Bloquera",
         url: absoluteUrl("/"),
+        logo: {
+          "@type": "ImageObject",
+          url: absoluteUrl("/android-chrome-512x512.png"),
+          width: 512,
+          height: 512,
+        },
         description:
           "Bloquera helps beginners learn crypto with structured lessons, quizzes, and an AI tutor.",
       },
