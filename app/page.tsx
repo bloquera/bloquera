@@ -60,11 +60,6 @@ export default async function Page() {
         url: absoluteUrl("/"),
         description:
           "Structured crypto learning with lessons, quizzes, dashboard progress, and an AI tutor, starting with Bitcoin.",
-        potentialAction: {
-          "@type": "SearchAction",
-          target: `${absoluteUrl("/")}#demo`,
-          "query-input": "required name=search_term_string",
-        },
       },
       {
         "@type": "Organization",
