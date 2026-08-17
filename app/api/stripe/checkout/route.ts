@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 
 import {
   createStripeRouteErrorResponse,
+  getAuthenticatedServerSupabaseOrError,
   jsonError,
   parseJsonBody,
 } from "@/lib/api-route";
 import {
-  ensureStripeCustomerForCurrentUser,
+  ensureStripeCustomerForUser,
   getCancelUrl,
   getPlanDetails,
   getSuccessUrl,
@@ -47,16 +48,24 @@ export async function POST(request: Request) {
     return jsonError("Stripe billing is not configured yet.", 500);
   }
 
+  const authResult = await getAuthenticatedServerSupabaseOrError({
+    unauthorizedMessage: "You must be logged in to start checkout.",
+  });
+
+  if ("response" in authResult) {
+    return authResult.response;
+  }
+
   let billingContext;
 
   try {
-    billingContext = await ensureStripeCustomerForCurrentUser();
+    billingContext = await ensureStripeCustomerForUser(authResult.user);
   } catch {
     return jsonError("Unable to prepare checkout for this account right now.", 503);
   }
 
   if (!billingContext) {
-    return jsonError("You must be logged in to start checkout.", 401);
+    return jsonError("Supabase billing administration is not configured yet.", 500);
   }
 
   let session;

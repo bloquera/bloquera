@@ -2,15 +2,22 @@ import { POST } from "@/app/api/stripe/checkout/route";
 
 const getStripe = vi.fn();
 const getPlanDetails = vi.fn();
-const ensureStripeCustomerForCurrentUser = vi.fn();
+const ensureStripeCustomerForUser = vi.fn();
+const getAuthenticatedServerSupabaseOrError = vi.fn();
 const createSession = vi.fn();
+
+vi.mock("@/lib/api-route", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api-route")>()),
+  getAuthenticatedServerSupabaseOrError: (...args: unknown[]) =>
+    getAuthenticatedServerSupabaseOrError(...args),
+}));
 
 vi.mock("@/lib/stripe", () => ({
   getStripe: () => getStripe(),
 }));
 
 vi.mock("@/lib/billing", () => ({
-  ensureStripeCustomerForCurrentUser: () => ensureStripeCustomerForCurrentUser(),
+  ensureStripeCustomerForUser: (user: unknown) => ensureStripeCustomerForUser(user),
   getCancelUrl: () => "http://localhost:3000/purchases/canceled",
   getPlanDetails: (plan: string) => getPlanDetails(plan),
   getSuccessUrl: () => "http://localhost:3000/purchases/success",
@@ -20,7 +27,8 @@ describe("stripe checkout route", () => {
   beforeEach(() => {
     getStripe.mockReset();
     getPlanDetails.mockReset();
-    ensureStripeCustomerForCurrentUser.mockReset();
+    ensureStripeCustomerForUser.mockReset();
+    getAuthenticatedServerSupabaseOrError.mockReset();
     createSession.mockReset();
 
     getStripe.mockReturnValue({
@@ -34,7 +42,14 @@ describe("stripe checkout route", () => {
       label: "Pro monthly",
       priceId: "price_monthly",
     });
-    ensureStripeCustomerForCurrentUser.mockResolvedValue({
+    getAuthenticatedServerSupabaseOrError.mockResolvedValue({
+      supabase: {},
+      user: {
+        email: "learner@example.com",
+        id: "user-1",
+      },
+    });
+    ensureStripeCustomerForUser.mockResolvedValue({
       customerId: "cus_123",
       user: {
         id: "user-1",
@@ -105,7 +120,12 @@ describe("stripe checkout route", () => {
   });
 
   it("requires an authenticated user", async () => {
-    ensureStripeCustomerForCurrentUser.mockResolvedValue(null);
+    getAuthenticatedServerSupabaseOrError.mockResolvedValue({
+      response: Response.json(
+        { error: "You must be logged in to start checkout." },
+        { status: 401 },
+      ),
+    });
 
     const response = await POST(
       new Request("http://localhost/api/stripe/checkout", {
@@ -116,6 +136,39 @@ describe("stripe checkout route", () => {
     );
 
     expect(response.status).toBe(401);
+    expect(ensureStripeCustomerForUser).not.toHaveBeenCalled();
+  });
+
+  it("passes the verified user to billing customer setup", async () => {
+    await POST(
+      new Request("http://localhost/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: "pro_monthly" }),
+      }),
+    );
+
+    expect(ensureStripeCustomerForUser).toHaveBeenCalledWith({
+      email: "learner@example.com",
+      id: "user-1",
+    });
+  });
+
+  it("reports missing billing administration separately from authentication", async () => {
+    ensureStripeCustomerForUser.mockResolvedValue(null);
+
+    const response = await POST(
+      new Request("http://localhost/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: "pro_monthly" }),
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "Supabase billing administration is not configured yet.",
+    });
   });
 
   it("returns a checkout URL", async () => {
@@ -180,7 +233,7 @@ describe("stripe checkout route", () => {
   });
 
   it("returns a service-unavailable response when customer setup throws", async () => {
-    ensureStripeCustomerForCurrentUser.mockRejectedValue(new Error("network"));
+    ensureStripeCustomerForUser.mockRejectedValue(new Error("network"));
 
     const response = await POST(
       new Request("http://localhost/api/stripe/checkout", {

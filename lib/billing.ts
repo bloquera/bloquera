@@ -333,20 +333,16 @@ export function getPortalReturnUrl(path = "/purchases") {
   return absoluteUrl(path);
 }
 
-export async function ensureStripeCustomerForCurrentUser() {
-  const supabase = await createServerSupabaseClient();
+type StripeCustomerUser = {
+  email?: string | null;
+  id: string;
+};
+
+export async function ensureStripeCustomerForUser(user: StripeCustomerUser) {
   const admin = createSupabaseAdminClient();
   const stripe = (await import("@/lib/stripe")).getStripe();
 
-  if (!supabase || !admin || !stripe) {
-    return null;
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!admin || !stripe) {
     return null;
   }
 
@@ -380,6 +376,24 @@ export async function ensureStripeCustomerForCurrentUser() {
     customerId: customer.id,
     user,
   };
+}
+
+export async function ensureStripeCustomerForCurrentUser() {
+  const supabase = await createServerSupabaseClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return null;
+  }
+
+  return ensureStripeCustomerForUser(user);
 }
 
 export async function createBillingPortalSessionForCurrentUser() {
