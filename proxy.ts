@@ -44,5 +44,7 @@ export const config = {
     "/profiles/:path*",
     "/purchases/:path*",
     "/auth/:path*",
+    "/api/stripe/checkout",
+    "/api/stripe/portal",
   ],
 };

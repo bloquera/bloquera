@@ -97,4 +97,26 @@ describe("proxy behavior", () => {
       type: "next",
     });
   });
+
+  it("refreshes the Supabase session for Stripe account routes", async () => {
+    updateSupabaseSession.mockResolvedValue({
+      response: { type: "next" },
+      user: { id: "user-1" },
+    });
+
+    const { config, proxy } = await import("@/proxy");
+
+    expect(config.matcher).toContain("/api/stripe/checkout");
+    expect(config.matcher).toContain("/api/stripe/portal");
+    expect(config.matcher).not.toContain("/api/stripe/webhook");
+
+    const response = await proxy(
+      createRequest("/api/stripe/checkout", "POST"),
+    );
+
+    expect(updateSupabaseSession).toHaveBeenCalledOnce();
+    expect(response).toEqual({
+      type: "next",
+    });
+  });
 });
