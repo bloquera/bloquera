@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
+import { sendWelcomeEmailForUser } from "@/lib/email";
 import { isE2EAuthBypassEnabled } from "@/lib/supabase/config";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Profile } from "@/types/profile";
@@ -22,12 +23,21 @@ export async function syncProfileForUser(user: User) {
     return null;
   }
 
+  const { data: existingProfile, error: lookupError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from("profiles")
     .upsert(
       {
         id: user.id,
         email: user.email ?? null,
+        ...(!lookupError && !existingProfile
+          ? { welcome_email_eligible_at: new Date().toISOString() }
+          : {}),
       },
       { onConflict: "id" },
     )
@@ -37,6 +47,8 @@ export async function syncProfileForUser(user: User) {
   if (error || !data) {
     return null;
   }
+
+  await sendWelcomeEmailForUser(user);
 
   return data as Profile;
 }
