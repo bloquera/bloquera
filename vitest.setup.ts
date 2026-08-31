@@ -1,6 +1,8 @@
 import "@testing-library/jest-dom/vitest";
 import { vi } from "vitest";
 
+vi.mock("server-only", () => ({}));
+
 const canvasContextStub = {
   clearRect: vi.fn(),
   createLinearGradient: vi.fn(() => ({

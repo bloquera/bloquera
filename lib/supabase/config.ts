@@ -64,3 +64,20 @@ export function getOpenAIServerEnv() {
     model: process.env.OPENAI_MODEL ?? "gpt-5-mini",
   };
 }
+
+export function getWelcomeEmailEnv() {
+  const apiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.RESEND_FROM_EMAIL;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+
+  if (!apiKey || !fromEmail || !siteUrl) {
+    return null;
+  }
+
+  return {
+    apiKey,
+    fromEmail,
+    replyToEmail: process.env.RESEND_REPLY_TO_EMAIL ?? null,
+    siteUrl: siteUrl.replace(/\/$/, ""),
+  };
+}
