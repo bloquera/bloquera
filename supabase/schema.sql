@@ -16,6 +16,33 @@ alter table public.profiles add column if not exists avatar_url text;
 alter table public.profiles add column if not exists bio text;
 alter table public.profiles add column if not exists timezone text;
 alter table public.profiles add column if not exists created_at timestamptz not null default timezone('utc'::text, now());
+alter table public.profiles add column if not exists welcome_email_claimed_at timestamptz;
+alter table public.profiles add column if not exists welcome_email_eligible_at timestamptz;
+alter table public.profiles add column if not exists welcome_email_sent_at timestamptz;
+
+create or replace function public.claim_welcome_email(target_user_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  update public.profiles
+  set welcome_email_claimed_at = now()
+  where id = target_user_id
+    and welcome_email_eligible_at is not null
+    and welcome_email_sent_at is null
+    and (
+      welcome_email_claimed_at is null
+      or welcome_email_claimed_at < now() - interval '10 minutes'
+    );
+
+  return found;
+end;
+$$;
+
+revoke all on function public.claim_welcome_email(uuid) from public;
+grant execute on function public.claim_welcome_email(uuid) to service_role;
 
 create unique index if not exists profiles_stripe_customer_id_key
 on public.profiles (stripe_customer_id)

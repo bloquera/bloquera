@@ -53,6 +53,16 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_production_supabase_publishable_key
 SUPABASE_SERVICE_ROLE_KEY=your_production_supabase_service_role_key
 ```
 
+Welcome emails are delivered through Resend after a new Supabase profile is
+created. Configure the following server-only variables after verifying the
+sending domain in Resend:
+
+```env
+RESEND_API_KEY=re_your_resend_api_key
+RESEND_FROM_EMAIL=Bloquera <hello@bloquera.io>
+RESEND_REPLY_TO_EMAIL=hello@bloquera.io
+```
+
 Supabase URL configuration should also match each environment:
 
 - local project `Site URL`: `http://localhost:3000`
@@ -81,6 +91,9 @@ Before deploying to Vercel, configure these project environment variables:
 - `STRIPE_PRO_YEARLY_PRICE_ID`
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL`
+- `RESEND_REPLY_TO_EMAIL` (optional)
 - `R2_ACCOUNT_ID`
 - `R2_ACCESS_KEY_ID`
 - `R2_SECRET_ACCESS_KEY`
