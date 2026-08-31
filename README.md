@@ -8,6 +8,35 @@ Bloquera exists to make crypto simple, clear, and accessible for everyone. We be
 
 We are building a space where curiosity is welcomed and learning happens at your own pace. With structured lessons and helpful guidance, Bloquera helps people move from confusion to clarity, empowering them to make smarter and safer decisions in the world of crypto.
 
+## Tech Stack
+
+| Area | Technology | Version | Purpose |
+| --- | --- | --- | --- |
+| Application | Next.js App Router | `^16.3.0` | Pages, server rendering, Route Handlers, metadata, and proxy-based session refresh |
+| UI runtime | React and React DOM | `^19.2.8` | Component-based user interface |
+| Language | TypeScript | `^5.9.3` | Typed application, server, configuration, and test code |
+| Styling | Tailwind CSS and PostCSS | `^4.3.3` | Responsive design and CSS processing |
+| Visual effects | OGL | `^1.0.11` | WebGL-powered interactive graphics |
+| Package tooling | Node.js and npm | Node.js 22 in CI | Runtime, dependency management, and project scripts |
+| Database | Supabase Postgres | Managed service | Profiles, progress, lesson-video metadata, subscriptions, and purchase records |
+| Authentication | Supabase Auth, Supabase JS, and `@supabase/ssr` | `^2.112.3`, `^0.12.4` | Email/password authentication, Google OAuth, sessions, confirmation, and password recovery |
+| Data security | Supabase Row Level Security | Managed service | Per-user access controls for profile, learning, and billing data |
+| Payments | Stripe Node SDK | `^22.5.0` | Checkout, subscriptions, customer portal, receipts, and webhook processing |
+| Transactional email | Resend API and SMTP | Managed service | Branded welcome emails and Supabase Auth email delivery |
+| AI | OpenAI Node SDK | `^6.49.0` | Context-aware crypto learning tutor responses |
+| Video storage | Cloudflare R2 | Managed service | Private lesson videos and WebVTT captions using the S3-compatible API and signed URLs |
+| R2 integration | AWS SDK for JavaScript S3 clients | `^3.1109.0` | Object upload, retrieval, and presigned media URLs |
+| Hosting | Vercel | Managed service | Preview and production deployments |
+| Product analytics | Vercel Analytics | `^2.0.1` | Privacy-conscious traffic and usage analytics |
+| Performance monitoring | Vercel Speed Insights | `^2.0.0` | Real-user web-performance measurements |
+| Unit testing | Vitest | `^4.1.10` | Application logic, Route Handlers, and component tests |
+| Component testing | Testing Library, jest-dom, and jsdom | `^16.3.2`, `^7.0.1`, `^29.1.1` | DOM rendering, interaction, and accessibility assertions |
+| End-to-end testing | Playwright | `^1.62.1` | Browser-based critical-flow testing in Chromium |
+| Code quality | ESLint and `eslint-config-next` | `^9.39.5`, `^16.3.0` | Static analysis and Next.js conventions |
+| Continuous integration | GitHub Actions | `actions/checkout@v4`, `actions/setup-node@v4` | Install, lint, test, build, and Playwright validation |
+| Source control | Git and GitHub with Gitflow | Repository workflow | Feature development, pull requests, and production promotion |
+| SEO | Next.js Metadata APIs, sitemap, robots, Open Graph, and structured data | Next.js `^16.3.0` | Search indexing and social previews |
+
 ## Local Development
 
 Install dependencies and start the dev server:
@@ -32,8 +61,8 @@ Bloquera uses separate Supabase projects for local development and production.
 
 Recommended setup:
 
-- local app -> local Supabase project
-- Vercel app -> production Supabase project
+- local app and Vercel Preview -> test Supabase project
+- Vercel Production -> production Supabase project
 
 Local `.env.local` should point to the local project:
 
@@ -53,15 +82,45 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_production_supabase_publishable_key
 SUPABASE_SERVICE_ROLE_KEY=your_production_supabase_service_role_key
 ```
 
+### Welcome email setup
+
 Welcome emails are delivered through Resend after a new Supabase profile is
-created. Configure the following server-only variables after verifying the
-sending domain in Resend:
+created. Email confirmation, confirmation resend, and password recovery remain
+managed by Supabase Auth through its custom SMTP settings.
+
+Verify `bloquera.io` in Resend, then configure these server-only variables:
 
 ```env
 RESEND_API_KEY=re_your_resend_api_key
 RESEND_FROM_EMAIL=Bloquera <hello@bloquera.io>
 RESEND_REPLY_TO_EMAIL=hello@bloquera.io
 ```
+
+Use separate Resend sending keys for the application welcome email and
+Supabase SMTP. This allows either integration to be rotated or disabled without
+affecting the other.
+
+In Vercel, add the three variables to **Preview** with the `develop` branch
+scope. Add the same variable names with a separate production key to
+**Production** when releasing the feature. Enter the sender value without
+surrounding quotes in the Vercel dashboard.
+
+Before deploying the application, apply `supabase/schema.sql` to the matching
+Supabase project. The schema adds one-time welcome-email eligibility, claim,
+and delivery tracking. Redeploy after changing Vercel environment variables;
+existing deployments do not receive new values automatically.
+
+Supabase custom SMTP uses the following Resend connection details:
+
+```text
+Host: smtp.resend.com
+Port: 465
+Username: resend
+Password: a dedicated Resend SMTP sending key
+```
+
+The SMTP username is always the literal lowercase value `resend`. The
+`re_...` API key belongs in the password field.
 
 Supabase URL configuration should also match each environment:
 
@@ -101,7 +160,7 @@ Before deploying to Vercel, configure these project environment variables:
 
 Notes:
 
-- Set `NEXT_PUBLIC_SITE_URL` to your production domain, for example `https://bloquera.com`.
+- Set `NEXT_PUBLIC_SITE_URL` to your production domain, `https://bloquera.io`.
 - Do not copy local secret values from `.env.local` into source control.
 - Vercel can use the existing `npm run build` command with this Next.js app directly.
 
