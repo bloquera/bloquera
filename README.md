@@ -12,30 +12,30 @@ We are building a space where curiosity is welcomed and learning happens at your
 
 | Area | Technology | Version | Purpose |
 | --- | --- | --- | --- |
-| Application | Next.js App Router | `^16.3.0` | Pages, server rendering, Route Handlers, metadata, and proxy-based session refresh |
-| UI runtime | React and React DOM | `^19.2.8` | Component-based user interface |
-| Language | TypeScript | `^5.9.3` | Typed application, server, configuration, and test code |
-| Styling | Tailwind CSS and PostCSS | `^4.3.3` | Responsive design and CSS processing |
-| Visual effects | OGL | `^1.0.11` | WebGL-powered interactive graphics |
-| Package tooling | Node.js and npm | Node.js 22 in CI | Runtime, dependency management, and project scripts |
-| Database | Supabase Postgres | Managed service | Profiles, progress, lesson-video metadata, subscriptions, and purchase records |
-| Authentication | Supabase Auth, Supabase JS, and `@supabase/ssr` | `^2.112.3`, `^0.12.4` | Email/password authentication, Google OAuth, sessions, confirmation, and password recovery |
-| Data security | Supabase Row Level Security | Managed service | Per-user access controls for profile, learning, and billing data |
-| Payments | Stripe Node SDK | `^22.5.0` | Checkout, subscriptions, customer portal, receipts, and webhook processing |
-| Transactional email | Resend API and SMTP | Managed service | Branded welcome emails and Supabase Auth email delivery |
-| AI | OpenAI Node SDK | `^6.49.0` | Context-aware crypto learning tutor responses |
-| Video storage | Cloudflare R2 | Managed service | Private lesson videos and WebVTT captions using the S3-compatible API and signed URLs |
-| R2 integration | AWS SDK for JavaScript S3 clients | `^3.1109.0` | Object upload, retrieval, and presigned media URLs |
-| Hosting | Vercel | Managed service | Preview and production deployments |
-| Product analytics | Vercel Analytics | `^2.0.1` | Privacy-conscious traffic and usage analytics |
-| Performance monitoring | Vercel Speed Insights | `^2.0.0` | Real-user web-performance measurements |
-| Unit testing | Vitest | `^4.1.10` | Application logic, Route Handlers, and component tests |
-| Component testing | Testing Library, jest-dom, and jsdom | `^16.3.2`, `^7.0.1`, `^29.1.1` | DOM rendering, interaction, and accessibility assertions |
-| End-to-end testing | Playwright | `^1.62.1` | Browser-based critical-flow testing in Chromium |
-| Code quality | ESLint and `eslint-config-next` | `^9.39.5`, `^16.3.0` | Static analysis and Next.js conventions |
-| Continuous integration | GitHub Actions | `actions/checkout@v4`, `actions/setup-node@v4` | Install, lint, test, build, and Playwright validation |
-| Source control | Git and GitHub with Gitflow | Repository workflow | Feature development, pull requests, and production promotion |
-| SEO | Next.js Metadata APIs, sitemap, robots, Open Graph, and structured data | Next.js `^16.3.0` | Search indexing and social previews |
+| Web application | Next.js App Router, React, and TypeScript | `^16.3.0`, `^19.2.8`, `^5.9.3` | Full-stack application, server rendering, Route Handlers, and typed UI development |
+| Styling | Tailwind CSS | `^4.3.3` | Responsive interface design |
+| Database and authentication | Supabase Postgres and Supabase Auth | Supabase JS `^2.112.3` | Application data, Row Level Security, email/password authentication, and Google OAuth |
+| Payments | Stripe | Stripe SDK `^22.5.0` | Checkout, subscriptions, billing portal, and webhooks |
+| Transactional email | Resend | Managed service | Welcome emails and Supabase authentication email delivery |
+| AI tutor | OpenAI API | OpenAI SDK `^6.49.0` | Context-aware crypto learning assistance |
+| Video storage | Cloudflare R2 | Managed service | Private lesson videos, captions, and secure media links |
+| Hosting and analytics | Vercel, Vercel Analytics, and Speed Insights | Analytics `^2.0.1`, Speed Insights `^2.0.0` | Preview and production deployments, traffic analytics, and performance monitoring |
+
+## Requirements
+
+Before running the complete application, you need:
+
+- Node.js 22 and npm
+- Git
+- a Supabase project for the database and authentication
+- Google Cloud OAuth credentials for Google sign-in
+- a Stripe account with subscription products and prices
+- a Resend account with a verified sending domain
+- an OpenAI API key
+- a Cloudflare account with an R2 bucket
+- a Vercel account for Preview and Production deployments
+- the required environment variables configured in `.env.local` or Vercel
+- `supabase/schema.sql` applied to the selected Supabase project
 
 ## Local Development
 
