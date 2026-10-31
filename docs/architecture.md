@@ -208,7 +208,7 @@ Secrets remain server-only and must not use `NEXT_PUBLIC_*` names.
 
 ## Testing and delivery requirements
 
-- Standardise local and CI development on Node.js 22.
+- Standardise local, CI, and Vercel development on Node.js 24 LTS.
 - Lint, type-check, unit-test, and build every pull request.
 - Run E2E tests for changes affecting authentication, billing, learning,
   playback, email, routing, or other critical flows.
@@ -219,8 +219,10 @@ Secrets remain server-only and must not use `NEXT_PUBLIC_*` names.
 
 ## Incremental roadmap
 
-1. **Reproducibility:** pin Node.js 22, add complete type-checking, validate
-   environment variables, and make E2E bypass impossible in Production.
+1. **Reproducibility:** pin Node.js 24 LTS across local development,
+   `package.json`, GitHub Actions, and Vercel; align `@types/node`; add complete
+   type-checking; validate environment variables; and make E2E bypass
+   impossible in Production.
 2. **Database discipline:** baseline Test and Production, introduce migrations,
    generate types, and add migration/RLS tests.
 3. **Security and operations:** distributed AI/API limits, webhook idempotency,
