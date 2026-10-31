@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getSupabaseBrowserEnv } from "@/lib/supabase/config";
+import type { Database } from "@/types/database";
 
 type SessionUpdateResult = {
   response: NextResponse;
@@ -22,7 +23,7 @@ export async function updateSupabaseSession(
     };
   }
 
-  const supabase = createServerClient(env.url, env.anonKey, {
+  const supabase = createServerClient<Database>(env.url, env.anonKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();

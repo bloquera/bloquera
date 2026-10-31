@@ -39,6 +39,15 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Start local Supabase
+        run: npm run db:start
+
+      - name: Rebuild database from migrations
+        run: npm run db:reset
+
+      - name: Database and RLS tests
+        run: npm run db:test
+
       - name: Build
         run: npm run build
 

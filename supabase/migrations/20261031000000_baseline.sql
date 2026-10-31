@@ -1,3 +1,7 @@
+-- Baseline captured from the identical Bloquera Test and Production schemas.
+-- Existing hosted projects must record this migration as applied; do not run
+-- the baseline against them because these objects already exist.
+
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
