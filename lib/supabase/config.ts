@@ -13,7 +13,22 @@ export function getSupabaseBrowserEnv() {
 }
 
 export function isE2EAuthBypassEnabled() {
-  return process.env.E2E_AUTH_BYPASS === "1";
+  if (
+    process.env.E2E_AUTH_BYPASS !== "1" ||
+    process.env.VERCEL_ENV === "production"
+  ) {
+    return false;
+  }
+
+  try {
+    const hostname = new URL(
+      process.env.NEXT_PUBLIC_SITE_URL ?? "",
+    ).hostname;
+
+    return ["localhost", "127.0.0.1", "::1"].includes(hostname);
+  } catch {
+    return false;
+  }
 }
 
 export function hasSupabaseEnv() {

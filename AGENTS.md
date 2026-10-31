@@ -60,7 +60,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Development workflow
 
-- Use Node.js 22. Normal feature work starts from `develop` on a `feature/*`
+- Use Node.js 24 LTS. Normal feature work starts from `develop` on a `feature/*`
   branch; production-ready history belongs on `main`.
 - Preserve unrelated user changes and keep commits focused.
 - Before writing code, inspect existing routes, services, tests, and types so
@@ -69,6 +69,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ```bash
 npm run lint
+npm run typecheck
 npm test
 npm run build
 ```

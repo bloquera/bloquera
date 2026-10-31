@@ -14,6 +14,18 @@ Use separate Test and Production resources:
 
 Do not copy Production secrets into `.env.local` or Preview.
 
+## Node.js
+
+Bloquera uses Node.js 24 LTS across local development, GitHub Actions, and
+Vercel. With `nvm`, activate the repository version before installing packages:
+
+```bash
+nvm use
+```
+
+The `package.json` engine also instructs Vercel to use the latest supported
+Node.js 24 release.
+
 ## Supabase
 
 Local `.env.local` should point to Supabase Test:
@@ -96,6 +108,11 @@ Configure the variables from `.env.example` in the appropriate Vercel scope:
 
 Environment-variable changes require a new deployment. Vercel can use the
 existing `npm run build` command.
+
+At server startup, Production requires the site URL and complete Supabase
+configuration. Optional integrations may remain disabled, but partially
+configured Supabase, Stripe, Resend, or R2 groups are rejected. Stripe also
+requires its webhook secret whenever it is enabled in Production.
 
 ## Lesson videos
 
