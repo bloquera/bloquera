@@ -1,0 +1,2 @@
+-- Intentionally empty. Product curriculum remains repository-managed and
+-- database tests create their own transactional fixtures.

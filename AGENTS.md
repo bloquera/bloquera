@@ -27,8 +27,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `lib/`: current domain logic and integrations. New server-only integrations
   should stay explicitly server-only and move toward `server/integrations/`
   when that boundary is introduced.
-- `supabase/`: schema and, after the migration baseline exists, ordered
-  migrations and seed data.
+- `supabase/`: local configuration, ordered migrations, seed data, and database
+  tests. The Test and Production migration baseline is established.
 - `e2e/`: Playwright browser flows; colocated `*.test.*` files are Vitest tests.
 
 ## Security and data rules
@@ -41,9 +41,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
   user-owned data.
 - Do not run destructive database operations, change production credentials,
   deploy to production, or modify live billing without explicit approval.
-- Inspect the existing schema before adding tables. Prefer timestamped Supabase
-  migrations after the migration baseline is established; do not create a
-  second competing schema path.
+- Inspect the existing schema before adding tables. Every schema change must be
+  a new timestamped Supabase migration. Never edit the applied baseline or
+  create a second competing schema path.
 - Keep Test/Preview and Production credentials and resources separate.
 
 ## Video and external services
@@ -76,5 +76,7 @@ npm run build
 
 - Run `npm run test:e2e` for authentication, learning, billing, video, routing,
   or other user-flow changes.
+- Run `npm run db:reset`, `npm run db:test`, and `npm run db:types` for database,
+  migration, generated-type, or RLS changes.
 - Update README or architecture documentation when setup, infrastructure,
   environment variables, or architectural decisions change.

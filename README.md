@@ -22,6 +22,7 @@ the approved long-term architecture.
 - Node.js 24 LTS
 - npm
 - Git
+- Docker Desktop, OrbStack, or another Docker-compatible runtime
 - A Supabase Test project
 - Credentials for any integrations you want to exercise locally
 
@@ -47,8 +48,13 @@ features will report that they are not configured.
    At minimum, configure the public site URL and Supabase variables for
    authentication and persisted application data.
 
-4. Apply [supabase/schema.sql](./supabase/schema.sql) to the selected Supabase
-   Test project if its schema has not already been provisioned.
+4. To work on the database, start the local Supabase stack and rebuild it from
+   the ordered migrations:
+
+   ```bash
+   npm run db:start
+   npm run db:reset
+   ```
 
 5. Start the development server:
 
@@ -85,6 +91,10 @@ R2, webhook, or signing secrets through `NEXT_PUBLIC_*` variables.
 | `npm test` | Run the Vitest suite |
 | `npm run build` | Create and type-check the production build |
 | `npm run test:e2e` | Run Playwright critical-flow tests |
+| `npm run db:start` | Start the local Supabase stack |
+| `npm run db:reset` | Rebuild the local database from migrations |
+| `npm run db:test` | Run database and RLS tests |
+| `npm run db:types` | Regenerate database types from the local schema |
 | `npm run video:upload -- <course> <module> <lesson> <file>` | Upload and register a lesson video |
 
 Before opening a pull request, normally run:
