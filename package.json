@@ -13,6 +13,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db",
+    "db:types": "supabase gen types --local --schema public | oxfmt --stdin-filepath types/database.ts > types/database.ts.tmp && mv types/database.ts.tmp types/database.ts",
     "video:upload": "node scripts/upload-lesson-video.mjs"
   },
   "dependencies": {
@@ -41,6 +46,8 @@
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.0",
     "jsdom": "^29.1.1",
+    "oxfmt": "0.75.0",
+    "supabase": "2.122.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.10"

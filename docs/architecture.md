@@ -147,10 +147,11 @@ lessons, independently tracked progress, publication state, and different
 access rules. Existing public URLs should be preserved or redirected during
 model changes.
 
-All schema changes must ultimately be represented by timestamped migrations.
-Before introducing migrations, baseline the actual Test and Production schemas
-so existing data is not recreated or lost. Generate Supabase TypeScript types
-after the migration workflow is established.
+All schema changes are represented by timestamped migrations. Test and
+Production were baselined from byte-identical schemas on 31 October 2026, so
+existing objects and data were not recreated. Supabase TypeScript types are
+generated from the migration-built local database and checked into the
+repository.
 
 ## Authorisation model
 
@@ -219,12 +220,12 @@ Secrets remain server-only and must not use `NEXT_PUBLIC_*` names.
 
 ## Incremental roadmap
 
-1. **Reproducibility:** pin Node.js 24 LTS across local development,
+1. **Reproducibility — complete:** pin Node.js 24 LTS across local development,
    `package.json`, GitHub Actions, and Vercel; align `@types/node`; add complete
    type-checking; validate environment variables; and make E2E bypass
    impossible in Production.
-2. **Database discipline:** baseline Test and Production, introduce migrations,
-   generate types, and add migration/RLS tests.
+2. **Database discipline — complete:** baseline Test and Production, introduce
+   migrations, generate types, and add migration/RLS tests.
 3. **Security and operations:** distributed AI/API limits, webhook idempotency,
    security headers, Sentry or equivalent monitoring, structured logs, alerts,
    and backup verification.

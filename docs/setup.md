@@ -56,10 +56,31 @@ Configure Supabase Auth URLs per environment:
 
 Enable and configure Google OAuth separately in Test and Production.
 
-The repository currently provisions database objects through
-`supabase/schema.sql`. The approved architecture replaces manual schema changes
-with ordered migrations after the existing Test and Production schemas are
-safely baselined.
+### Local database workflow
+
+The Supabase CLI is pinned as a development dependency. Start the local stack,
+rebuild it from the ordered migrations, and run the database tests with:
+
+```bash
+npm run db:start
+npm run db:reset
+npm run db:test
+```
+
+Regenerate the checked-in TypeScript database types after every schema change:
+
+```bash
+npm run db:types
+```
+
+Create each new schema change as a forward-only timestamped migration under
+`supabase/migrations/`. Do not edit an applied migration or recreate
+`supabase/schema.sql`.
+
+The Test and Production projects were baselined from identical schemas on
+31 October 2026. Both currently record the baseline and welcome-email function
+hardening migrations. Never run `supabase db reset --linked` against either
+hosted project; that command destroys remote data.
 
 ## Resend and Supabase SMTP
 
