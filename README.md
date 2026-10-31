@@ -19,7 +19,7 @@ the approved long-term architecture.
 
 ## Prerequisites
 
-- Node.js 22
+- Node.js 24 LTS
 - npm
 - Git
 - A Supabase Test project
@@ -81,6 +81,7 @@ R2, webhook, or signing secrets through `NEXT_PUBLIC_*` variables.
 | --- | --- |
 | `npm run dev` | Start the local development server |
 | `npm run lint` | Run ESLint |
+| `npm run typecheck` | Type-check the application without emitting files |
 | `npm test` | Run the Vitest suite |
 | `npm run build` | Create and type-check the production build |
 | `npm run test:e2e` | Run Playwright critical-flow tests |
@@ -90,6 +91,7 @@ Before opening a pull request, normally run:
 
 ```bash
 npm run lint
+npm run typecheck
 npm test
 npm run build
 ```
