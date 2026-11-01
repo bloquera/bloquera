@@ -3,6 +3,32 @@
 This runbook covers the minimum checks for Preview and Production. It does not
 replace provider-specific recovery procedures or authorise destructive changes.
 
+## Verification record
+
+The following security-and-operations checks were completed on 1 November 2026:
+
+- the security-operations migration was applied to Production, and a subsequent
+  dry run confirmed that no migrations remain pending;
+- Stripe test checkout, signed webhook delivery, and duplicate-event handling
+  were verified in Preview;
+- the enforced Content Security Policy was verified in Preview and Production
+  across public, authentication, and signed-out protected-route flows, with no
+  CSP violations or required browser requests blocked;
+- Production security headers were verified, including HSTS, frame denial,
+  MIME-sniffing protection, permissions policy, and referrer policy; and
+- the Production Vercel log stream was confirmed active, with no matching HTTP
+  500, HTTP 503, CSP, or Stripe webhook errors in the preceding 24 hours.
+
+The following checks are intentionally deferred:
+
+- the full Production smoke test, including video playback and Stripe Live,
+  until Production videos and live billing are configured;
+- an isolated Supabase backup restore, because it requires a third temporary
+  project that may incur cost;
+- custom Vercel alert rules, because the current account scope returns
+  `forbidden`; and
+- usage-generating OpenAI, Resend, R2 load, and live Stripe payment tests.
+
 ## Monitoring and logs
 
 Server security and billing events are emitted as single-line JSON records to
