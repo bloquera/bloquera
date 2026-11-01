@@ -123,5 +123,6 @@ Preview must never use live billing or production administrative credentials.
 
 - [Architecture](./docs/architecture.md)
 - [Service and environment setup](./docs/setup.md)
+- [Operations and incident runbook](./docs/operations.md)
 - [Contributing and Git workflow](./CONTRIBUTING.md)
 - [Agent working instructions](./AGENTS.md)

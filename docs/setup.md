@@ -79,8 +79,12 @@ Create each new schema change as a forward-only timestamped migration under
 
 The Test and Production projects were baselined from identical schemas on
 31 October 2026. Both currently record the baseline and welcome-email function
-hardening migrations. Never run `supabase db reset --linked` against either
-hosted project; that command destroys remote data.
+hardening migrations. Test also records the 1 November 2026 security-operations
+migration; Production must not receive it until Preview is verified and the
+Production change is explicitly approved. Apply later migrations to Test first
+with `supabase db push`, verify Preview, and obtain explicit approval before
+applying them to Production. Never run `supabase db reset --linked` against
+either hosted project; that command destroys remote data.
 
 ## Resend and Supabase SMTP
 
@@ -119,6 +123,7 @@ Configure the variables from `.env.example` in the appropriate Vercel scope:
 - `STRIPE_PRO_YEARLY_PRICE_ID`
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
+- `RATE_LIMIT_SECRET`
 - `RESEND_API_KEY`
 - `RESEND_FROM_EMAIL`
 - `RESEND_REPLY_TO_EMAIL` (optional)
@@ -133,7 +138,12 @@ existing `npm run build` command.
 At server startup, Production requires the site URL and complete Supabase
 configuration. Optional integrations may remain disabled, but partially
 configured Supabase, Stripe, Resend, or R2 groups are rejected. Stripe also
-requires its webhook secret whenever it is enabled in Production.
+requires its webhook secret whenever it is enabled in Production. OpenAI
+requires a private `RATE_LIMIT_SECRET` containing at least 32 characters in
+Production. Generate separate random values for Preview and Production.
+
+Security monitoring, Stripe recovery, backup verification, and incident steps
+are documented in [operations.md](./operations.md).
 
 ## Lesson videos
 

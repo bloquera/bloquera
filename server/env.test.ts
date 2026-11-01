@@ -14,6 +14,7 @@ const productionEnvironment = {
   STRIPE_PRO_MONTHLY_PRICE_ID: "price_monthly",
   STRIPE_PRO_YEARLY_PRICE_ID: "price_yearly",
   OPENAI_API_KEY: "openai-key",
+  RATE_LIMIT_SECRET: "rate-limit-secret-with-at-least-32-characters",
   RESEND_API_KEY: "resend-key",
   RESEND_FROM_EMAIL: "Bloquera <hello@bloquera.io>",
   R2_ACCOUNT_ID: "account-id",
@@ -66,6 +67,25 @@ describe("server environment validation", () => {
     ).toContain(
       "STRIPE_WEBHOOK_SECRET is required when Stripe is enabled in Production.",
     );
+  });
+
+  it("requires a rate-limit secret when OpenAI is enabled in Production", () => {
+    expect(
+      getServerEnvironmentErrors({
+        ...productionEnvironment,
+        RATE_LIMIT_SECRET: "",
+      }),
+    ).toContain(
+      "RATE_LIMIT_SECRET is required when OpenAI is enabled in Production.",
+    );
+  });
+
+  it("rejects a weak rate-limit secret", () => {
+    expect(
+      getServerEnvironmentErrors({
+        RATE_LIMIT_SECRET: "too-short",
+      }),
+    ).toContain("RATE_LIMIT_SECRET must contain at least 32 characters.");
   });
 
   it("accepts complete Production configuration", () => {
