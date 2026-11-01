@@ -84,15 +84,26 @@ test.describe("happy paths", () => {
     await expect(prompt).toBeVisible();
 
     await prompt.fill("What is self-custody?");
-    await page.getByRole("button", { name: "Ask" }).click();
-    await expect(page.getByText("Guest demo complete")).toBeVisible();
+    const chatResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/chat") &&
+        response.request().method() === "POST",
+    );
 
-    await expect(page.getByText("Guest demo · 0 of 3 questions left")).toBeVisible();
-    await expect(page.getByText("Guest demo complete")).toBeVisible();
+    await page.getByRole("button", { name: "Ask" }).click();
+    const chatResponse = await chatResponsePromise;
+    expect(chatResponse.status()).toBe(429);
+
+    const activeChatRoot = page.locator("#home-mobile-chat:visible, #demo:visible");
     await expect(
-      page.getByText("Create a free account to unlock 10 tutor questions per day"),
+      activeChatRoot.getByText("Guest demo · 0 of 3 questions left"),
     ).toBeVisible();
-    const activeChatRoot = page.locator("#home-mobile-chat, #demo");
+    await expect(activeChatRoot.getByText("Guest demo complete")).toBeVisible();
+    await expect(
+      activeChatRoot.getByText(
+        "Create a free account to unlock 10 tutor questions per day",
+      ),
+    ).toBeVisible();
     await expect(activeChatRoot.locator('a[href="/auth/register"]').first()).toBeVisible();
     await expect(activeChatRoot.locator('a[href="/auth/login"]').first()).toBeVisible();
   });
