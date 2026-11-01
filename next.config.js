@@ -19,13 +19,14 @@ function getContentSecurityPolicy() {
     "object-src 'none'",
     `script-src 'self' 'unsafe-inline'${previewScriptSources}`,
     "style-src 'self' 'unsafe-inline'",
+    "upgrade-insecure-requests",
   ].join("; ");
 }
 
 function getSecurityHeaders() {
   return [
     {
-      key: "Content-Security-Policy-Report-Only",
+      key: "Content-Security-Policy",
       value: getContentSecurityPolicy(),
     },
     {
