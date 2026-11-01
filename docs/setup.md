@@ -78,13 +78,13 @@ Create each new schema change as a forward-only timestamped migration under
 `supabase/schema.sql`.
 
 The Test and Production projects were baselined from identical schemas on
-31 October 2026. Both currently record the baseline and welcome-email function
-hardening migrations. Test also records the 1 November 2026 security-operations
-migration; Production must not receive it until Preview is verified and the
-Production change is explicitly approved. Apply later migrations to Test first
-with `supabase db push`, verify Preview, and obtain explicit approval before
-applying them to Production. Never run `supabase db reset --linked` against
-either hosted project; that command destroys remote data.
+31 October 2026. Both record the baseline, welcome-email function hardening,
+and 1 November 2026 security-operations migrations. The security-operations
+migration was applied to Production on 1 November 2026 after Preview validation
+and explicit approval. Apply later migrations to Test first with
+`supabase db push`, verify Preview, and obtain explicit approval before applying
+them to Production. Never run `supabase db reset --linked` against either
+hosted project; that command destroys remote data.
 
 ## Resend and Supabase SMTP
 
