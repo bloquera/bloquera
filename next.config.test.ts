@@ -22,9 +22,13 @@ describe("Next.js security headers", () => {
     );
 
     expect(rules[0].source).toBe("/:path*");
-    expect(headers["Content-Security-Policy-Report-Only"]).toContain(
+    expect(headers["Content-Security-Policy"]).toContain(
       "frame-ancestors 'none'",
     );
+    expect(headers["Content-Security-Policy"]).toContain(
+      "upgrade-insecure-requests",
+    );
+    expect(headers["Content-Security-Policy-Report-Only"]).toBeUndefined();
     expect(headers["Permissions-Policy"]).toBe(
       "camera=(), geolocation=(), microphone=()",
     );
@@ -43,7 +47,7 @@ describe("Next.js security headers", () => {
     const headers = Object.fromEntries(
       rules[0].headers.map(({ key, value }) => [key, value]),
     );
-    const policy = headers["Content-Security-Policy-Report-Only"];
+    const policy = headers["Content-Security-Policy"];
 
     expect(policy).toContain("connect-src 'self'");
     expect(policy).toContain("https://vercel.com");
@@ -57,7 +61,7 @@ describe("Next.js security headers", () => {
     const headers = Object.fromEntries(
       rules[0].headers.map(({ key, value }) => [key, value]),
     );
-    const policy = headers["Content-Security-Policy-Report-Only"];
+    const policy = headers["Content-Security-Policy"];
 
     expect(policy).not.toContain("https://vercel.com");
     expect(policy).not.toContain("https://vercel.live");
