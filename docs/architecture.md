@@ -227,9 +227,10 @@ Secrets remain server-only and must not use `NEXT_PUBLIC_*` names.
 2. **Database discipline — complete:** baseline Test and Production, introduce
    migrations, generate types, and add migration/RLS tests.
 3. **Security and operations — in progress:** database-backed AI limits,
-   explicit Stripe webhook claims, baseline security headers, report-only CSP,
-   structured Vercel logs, and operational runbooks are implemented. Preview
-   CSP validation, alert configuration, and a witnessed backup restore remain.
+   explicit Stripe webhook claims, enforced CSP, structured Vercel logs,
+   Production migration, and operational runbooks are implemented and verified.
+   Custom alert configuration and a witnessed isolated backup restore are
+   deferred because of current plan, permission, or cost constraints.
 4. **Multi-course model:** introduce course, module, lesson, enrolment, and
    course-aware progress entities while preserving the Bitcoin experience.
 5. **Video publishing:** validate Cloudflare Stream on one lesson, then add
