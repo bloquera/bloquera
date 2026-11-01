@@ -88,6 +88,19 @@ export function getServerEnvironmentErrors(env: Environment = process.env) {
         "STRIPE_WEBHOOK_SECRET is required when Stripe is enabled in Production.",
       );
     }
+
+    if (hasValue(env, "OPENAI_API_KEY") && !hasValue(env, "RATE_LIMIT_SECRET")) {
+      errors.push(
+        "RATE_LIMIT_SECRET is required when OpenAI is enabled in Production.",
+      );
+    }
+  }
+
+  if (
+    hasValue(env, "RATE_LIMIT_SECRET") &&
+    (env.RATE_LIMIT_SECRET?.trim().length ?? 0) < 32
+  ) {
+    errors.push("RATE_LIMIT_SECRET must contain at least 32 characters.");
   }
 
   if (hasValue(env, "E2E_AUTH_BYPASS")) {

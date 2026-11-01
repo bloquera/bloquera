@@ -228,11 +228,15 @@ async function resolveUserIdByStripeCustomerId(
     return null;
   }
 
-  const { data: profile } = await admin
+  const { data: profile, error } = await admin
     .from("profiles")
     .select("id")
     .eq("stripe_customer_id", stripeCustomerId)
     .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
 
   return profile?.id ?? null;
 }
@@ -346,11 +350,15 @@ export async function ensureStripeCustomerForUser(user: StripeCustomerUser) {
     return null;
   }
 
-  const { data: profile } = await admin
+  const { data: profile, error: profileError } = await admin
     .from("profiles")
     .select("stripe_customer_id, email, display_name")
     .eq("id", user.id)
     .single();
+
+  if (profileError) {
+    throw profileError;
+  }
 
   if (profile?.stripe_customer_id) {
     return {
@@ -455,11 +463,15 @@ export async function upsertSubscriptionFromStripe(
     return;
   }
 
-  const { data: profile } = await admin
+  const { data: profile, error: profileError } = await admin
     .from("profiles")
     .select("id")
     .eq("stripe_customer_id", resolvedCustomerId)
     .maybeSingle();
+
+  if (profileError) {
+    throw profileError;
+  }
 
   if (!profile) {
     return;
@@ -476,7 +488,7 @@ export async function upsertSubscriptionFromStripe(
         ? "pro_monthly"
         : "free";
 
-  await admin.from("subscriptions").upsert(
+  const { error } = await admin.from("subscriptions").upsert(
     {
       user_id: profile.id,
       stripe_customer_id: resolvedCustomerId,
@@ -490,6 +502,10 @@ export async function upsertSubscriptionFromStripe(
     },
     { onConflict: "user_id" },
   );
+
+  if (error) {
+    throw error;
+  }
 }
 
 export async function markSubscriptionCanceled(subscriptionId: string) {
@@ -499,13 +515,17 @@ export async function markSubscriptionCanceled(subscriptionId: string) {
     return;
   }
 
-  await admin
+  const { error } = await admin
     .from("subscriptions")
     .update({
       status: "canceled",
       cancel_at_period_end: true,
     })
     .eq("stripe_subscription_id", subscriptionId);
+
+  if (error) {
+    throw error;
+  }
 }
 
 export async function recordPurchaseEvent(input: {
@@ -513,6 +533,7 @@ export async function recordPurchaseEvent(input: {
   currency?: string | null;
   eventType: string;
   status?: string | null;
+  stripeEventId: string;
   stripeCheckoutSessionId?: string | null;
   stripeCustomerId?: string | null;
   stripeInvoiceId?: string | null;
@@ -529,22 +550,31 @@ export async function recordPurchaseEvent(input: {
     return;
   }
 
-  await admin.from("purchase_events").insert({
-    amount_cents: input.amountCents ?? null,
-    currency: input.currency ?? null,
-    event_type: input.eventType,
-    status: input.status ?? null,
-    stripe_checkout_session_id: input.stripeCheckoutSessionId ?? null,
-    stripe_invoice_id: input.stripeInvoiceId ?? null,
-    subscription_id: input.subscriptionId ?? null,
-    user_id: userId,
-  });
+  const { error } = await admin.from("purchase_events").upsert(
+    {
+      amount_cents: input.amountCents ?? null,
+      currency: input.currency ?? null,
+      event_type: input.eventType,
+      status: input.status ?? null,
+      stripe_checkout_session_id: input.stripeCheckoutSessionId ?? null,
+      stripe_event_id: input.stripeEventId,
+      stripe_invoice_id: input.stripeInvoiceId ?? null,
+      subscription_id: input.subscriptionId ?? null,
+      user_id: userId,
+    },
+    { onConflict: "stripe_event_id" },
+  );
+
+  if (error) {
+    throw error;
+  }
 }
 
 export async function recordConversionEvent(input: {
   eventType: "checkout_complete";
   plan?: BillingPlanSlug | null;
   source: string;
+  sourceEventId: string;
   stripeCustomerId?: string | null;
   targetSlug: string;
   targetTitle: string;
@@ -560,19 +590,27 @@ export async function recordConversionEvent(input: {
     return;
   }
 
-  await admin.from("learning_activity").insert({
-    activity_context: JSON.stringify({
-      eventType: input.eventType,
-      plan:
-        input.plan === "pro_monthly" || input.plan === "pro_yearly"
-          ? input.plan
-          : null,
-      source: input.source,
-    }),
-    activity_type: "conversion_event",
-    created_at: new Date().toISOString(),
-    lesson_slug: input.targetSlug,
-    lesson_title: input.targetTitle,
-    user_id: userId,
-  });
+  const { error } = await admin.from("learning_activity").upsert(
+    {
+      activity_context: JSON.stringify({
+        eventType: input.eventType,
+        plan:
+          input.plan === "pro_monthly" || input.plan === "pro_yearly"
+            ? input.plan
+            : null,
+        source: input.source,
+      }),
+      activity_type: "conversion_event",
+      created_at: new Date().toISOString(),
+      lesson_slug: input.targetSlug,
+      lesson_title: input.targetTitle,
+      source_event_id: input.sourceEventId,
+      user_id: userId,
+    },
+    { onConflict: "source_event_id" },
+  );
+
+  if (error) {
+    throw error;
+  }
 }

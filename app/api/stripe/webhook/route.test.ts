@@ -5,6 +5,9 @@ const recordConversionEvent = vi.fn();
 const upsertSubscriptionFromStripe = vi.fn();
 const markSubscriptionCanceled = vi.fn();
 const constructEvent = vi.fn();
+const claimStripeWebhookEvent = vi.fn();
+const completeStripeWebhookEvent = vi.fn();
+const failStripeWebhookEvent = vi.fn();
 
 vi.mock("@/lib/stripe", () => ({
   getStripe: () => getStripe(),
@@ -22,6 +25,15 @@ vi.mock("@/lib/billing", () => ({
     upsertSubscriptionFromStripe(...args),
 }));
 
+vi.mock("@/server/integrations/stripe/webhook-events", () => ({
+  claimStripeWebhookEvent: (...args: unknown[]) =>
+    claimStripeWebhookEvent(...args),
+  completeStripeWebhookEvent: (...args: unknown[]) =>
+    completeStripeWebhookEvent(...args),
+  failStripeWebhookEvent: (...args: unknown[]) =>
+    failStripeWebhookEvent(...args),
+}));
+
 describe("stripe webhook route", () => {
   beforeEach(() => {
     getStripe.mockReset();
@@ -31,6 +43,9 @@ describe("stripe webhook route", () => {
     upsertSubscriptionFromStripe.mockReset();
     markSubscriptionCanceled.mockReset();
     constructEvent.mockReset();
+    claimStripeWebhookEvent.mockReset();
+    completeStripeWebhookEvent.mockReset();
+    failStripeWebhookEvent.mockReset();
 
     getStripe.mockReturnValue({
       webhooks: {
@@ -43,6 +58,9 @@ describe("stripe webhook route", () => {
       webhookSecret: "whsec_test",
       yearlyPriceId: "price_yearly",
     });
+    claimStripeWebhookEvent.mockResolvedValue(true);
+    completeStripeWebhookEvent.mockResolvedValue(undefined);
+    failStripeWebhookEvent.mockResolvedValue(undefined);
   });
 
   it("requires webhook configuration", async () => {
@@ -109,6 +127,7 @@ describe("stripe webhook route", () => {
           subscription: "sub_123",
         },
       },
+      id: "evt_checkout",
       type: "checkout.session.completed",
     });
 
@@ -128,6 +147,7 @@ describe("stripe webhook route", () => {
       currency: "usd",
       eventType: "checkout.session.completed",
       status: "paid",
+      stripeEventId: "evt_checkout",
       stripeCheckoutSessionId: "cs_123",
       stripeCustomerId: "cus_123",
       subscriptionId: "sub_123",
@@ -136,11 +156,42 @@ describe("stripe webhook route", () => {
       eventType: "checkout_complete",
       plan: "pro_yearly",
       source: "stripe_webhook",
+      sourceEventId: "evt_checkout",
       stripeCustomerId: "cus_123",
       targetSlug: "/purchases",
       targetTitle: "Completed Pro yearly checkout",
     });
     expect(response.status).toBe(200);
+    expect(claimStripeWebhookEvent).toHaveBeenCalledWith(
+      "evt_checkout",
+      "checkout.session.completed",
+    );
+    expect(completeStripeWebhookEvent).toHaveBeenCalledWith("evt_checkout");
+  });
+
+  it("acknowledges an event that has already been processed", async () => {
+    constructEvent.mockReturnValue({
+      data: { object: {} },
+      id: "evt_duplicate",
+      type: "customer.subscription.updated",
+    });
+    claimStripeWebhookEvent.mockResolvedValue(false);
+
+    const { POST } = await import("@/app/api/stripe/webhook/route");
+    const response = await POST(
+      new Request("http://localhost/api/stripe/webhook", {
+        method: "POST",
+        headers: { "stripe-signature": "sig_123" },
+        body: "{}",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      duplicate: true,
+      received: true,
+    });
+    expect(upsertSubscriptionFromStripe).not.toHaveBeenCalled();
   });
 
   it("upserts subscription records for subscription lifecycle events", async () => {
@@ -154,6 +205,7 @@ describe("stripe webhook route", () => {
       data: {
         object: subscription,
       },
+      id: "evt_subscription_updated",
       type: "customer.subscription.updated",
     });
 
@@ -179,6 +231,7 @@ describe("stripe webhook route", () => {
           id: "sub_123",
         },
       },
+      id: "evt_subscription_deleted",
       type: "customer.subscription.deleted",
     });
 
@@ -214,6 +267,7 @@ describe("stripe webhook route", () => {
           status: "paid",
         },
       },
+      id: "evt_invoice_paid",
       type: "invoice.paid",
     });
 
@@ -233,6 +287,7 @@ describe("stripe webhook route", () => {
       currency: "usd",
       eventType: "invoice.paid",
       status: "paid",
+      stripeEventId: "evt_invoice_paid",
       stripeCustomerId: "cus_123",
       stripeInvoiceId: "in_123",
       subscriptionId: "sub_123",
@@ -255,6 +310,7 @@ describe("stripe webhook route", () => {
           subscription: "sub_123",
         },
       },
+      id: "evt_checkout_failed",
       type: "checkout.session.completed",
     });
     recordPurchaseEvent.mockRejectedValue(new Error("db unavailable"));
@@ -271,6 +327,10 @@ describe("stripe webhook route", () => {
     );
 
     expect(response.status).toBe(503);
+    expect(failStripeWebhookEvent).toHaveBeenCalledWith(
+      "evt_checkout_failed",
+      expect.any(Error),
+    );
     await expect(response.json()).resolves.toEqual({
       error: "Unable to process Stripe webhook right now.",
     });
