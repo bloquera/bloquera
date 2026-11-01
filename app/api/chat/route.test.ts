@@ -14,6 +14,7 @@ const activityUsageEqUser = vi.fn();
 const activityUsageSelect = vi.fn();
 const cookies = vi.fn();
 const cookieGet = vi.fn();
+const consumeDistributedRateLimit = vi.fn();
 
 vi.mock("@/lib/openai", () => ({
   createTutorReply: (message: string) => createTutorReply(message),
@@ -45,6 +46,20 @@ vi.mock("next/headers", () => ({
   cookies: () => cookies(),
 }));
 
+vi.mock("@/server/security/distributed-rate-limit", () => ({
+  consumeDistributedRateLimit: (...args: unknown[]) =>
+    consumeDistributedRateLimit(...args),
+  getFixedWindow: () => ({
+    end: new Date("2026-12-01T00:00:00.000Z"),
+    start: new Date("2026-11-01T00:00:00.000Z"),
+  }),
+  getRequestClientIdentifier: (_request: Request, fallback: string) => fallback,
+  getUtcDayWindow: () => ({
+    end: new Date("2026-11-02T00:00:00.000Z"),
+    start: new Date("2026-11-01T00:00:00.000Z"),
+  }),
+}));
+
 describe("chat route", () => {
   beforeEach(() => {
     createTutorReply.mockReset();
@@ -61,6 +76,7 @@ describe("chat route", () => {
     activityUsageSelect.mockReset();
     cookies.mockReset();
     cookieGet.mockReset();
+    consumeDistributedRateLimit.mockReset();
     createServerSupabaseClient.mockResolvedValue({
       auth: {
         getUser,
@@ -113,6 +129,7 @@ describe("chat route", () => {
     });
     cookieGet.mockReturnValue(undefined);
     insert.mockResolvedValue({ error: null });
+    consumeDistributedRateLimit.mockResolvedValue(null);
   });
 
   it("rejects empty messages", async () => {

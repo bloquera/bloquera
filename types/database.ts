@@ -3,6 +3,34 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      api_rate_limits: {
+        Row: {
+          request_count: number;
+          scope: string;
+          subject_hash: string;
+          updated_at: string;
+          window_end: string;
+          window_start: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          request_count?: number;
+          scope: string;
+          subject_hash: string;
+          updated_at?: string;
+          window_end: string;
+          window_start: string;
+        };
+        Update: {
+          request_count?: number;
+          scope?: string;
+          subject_hash?: string;
+          updated_at?: string;
+          window_end?: string;
+          window_start?: string;
+        };
+        Relationships: [];
+      };
       learning_activity: {
         Row: {
           activity_context: string | null;
@@ -14,6 +42,7 @@ export type Database = {
           lesson_title: string;
           passed: boolean | null;
           response_preview: string | null;
+          source_event_id: string | null;
           total_questions: number | null;
           user_id: string;
         };
@@ -28,6 +57,7 @@ export type Database = {
           lesson_title: string;
           passed?: boolean | null;
           response_preview?: string | null;
+          source_event_id?: string | null;
           total_questions?: number | null;
           user_id: string;
         };
@@ -41,6 +71,7 @@ export type Database = {
           lesson_title?: string;
           passed?: boolean | null;
           response_preview?: string | null;
+          source_event_id?: string | null;
           total_questions?: number | null;
           user_id?: string;
         };
@@ -154,6 +185,7 @@ export type Database = {
           id: string;
           status: string | null;
           stripe_checkout_session_id: string | null;
+          stripe_event_id: string | null;
           stripe_invoice_id: string | null;
           subscription_id: string | null;
           user_id: string;
@@ -167,6 +199,7 @@ export type Database = {
           id?: string;
           status?: string | null;
           stripe_checkout_session_id?: string | null;
+          stripe_event_id?: string | null;
           stripe_invoice_id?: string | null;
           subscription_id?: string | null;
           user_id: string;
@@ -179,9 +212,44 @@ export type Database = {
           id?: string;
           status?: string | null;
           stripe_checkout_session_id?: string | null;
+          stripe_event_id?: string | null;
           stripe_invoice_id?: string | null;
           subscription_id?: string | null;
           user_id?: string;
+        };
+        Relationships: [];
+      };
+      stripe_webhook_events: {
+        Row: {
+          attempt_count: number;
+          claimed_at: string;
+          event_id: string;
+          event_type: string;
+          last_error: string | null;
+          processed_at: string | null;
+          status: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          attempt_count?: number;
+          claimed_at?: string;
+          event_id: string;
+          event_type: string;
+          last_error?: string | null;
+          processed_at?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          attempt_count?: number;
+          claimed_at?: string;
+          event_id?: string;
+          event_type?: string;
+          last_error?: string | null;
+          processed_at?: string | null;
+          status?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -264,7 +332,30 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      claim_stripe_webhook_event: {
+        Args: { target_event_id: string; target_event_type: string };
+        Returns: boolean;
+      };
       claim_welcome_email: { Args: { target_user_id: string }; Returns: boolean };
+      complete_stripe_webhook_event: { Args: { target_event_id: string }; Returns: undefined };
+      consume_api_rate_limit: {
+        Args: {
+          target_limit: number;
+          target_scope: string;
+          target_subject_hash: string;
+          target_window_end: string;
+          target_window_start: string;
+        };
+        Returns: {
+          allowed: boolean;
+          remaining: number;
+          reset_at: string;
+        }[];
+      };
+      fail_stripe_webhook_event: {
+        Args: { target_error: string; target_event_id: string };
+        Returns: undefined;
+      };
     };
     Enums: {
       [_ in never]: never;

@@ -84,6 +84,7 @@ function configureAdminClient(options?: {
     if (table === "purchase_events" || table === "learning_activity") {
       return {
         insert,
+        upsert,
       };
     }
 
@@ -213,7 +214,7 @@ describe("billing helpers", () => {
   });
 
   it("records purchase events for the resolved customer profile", async () => {
-    const { insert } = configureAdminClient({
+    const { upsert } = configureAdminClient({
       profileByCustomerId: { id: "user-1" },
     });
     const { recordPurchaseEvent } = await import("@/lib/billing");
@@ -223,25 +224,30 @@ describe("billing helpers", () => {
       currency: "usd",
       eventType: "invoice.paid",
       status: "paid",
+      stripeEventId: "evt_invoice_paid",
       stripeCustomerId: "cus_123",
       stripeInvoiceId: "in_123",
       subscriptionId: "sub_123",
     });
 
-    expect(insert).toHaveBeenCalledWith({
-      amount_cents: 2_900,
-      currency: "usd",
-      event_type: "invoice.paid",
-      status: "paid",
-      stripe_checkout_session_id: null,
-      stripe_invoice_id: "in_123",
-      subscription_id: "sub_123",
-      user_id: "user-1",
-    });
+    expect(upsert).toHaveBeenCalledWith(
+      {
+        amount_cents: 2_900,
+        currency: "usd",
+        event_type: "invoice.paid",
+        status: "paid",
+        stripe_checkout_session_id: null,
+        stripe_event_id: "evt_invoice_paid",
+        stripe_invoice_id: "in_123",
+        subscription_id: "sub_123",
+        user_id: "user-1",
+      },
+      { onConflict: "stripe_event_id" },
+    );
   });
 
   it("records conversion events with normalized plan data", async () => {
-    const { insert } = configureAdminClient({
+    const { upsert } = configureAdminClient({
       profileByCustomerId: { id: "user-1" },
     });
     const { recordConversionEvent } = await import("@/lib/billing");
@@ -250,19 +256,22 @@ describe("billing helpers", () => {
       eventType: "checkout_complete",
       plan: "pro_monthly",
       source: "stripe_webhook",
+      sourceEventId: "evt_checkout",
       stripeCustomerId: "cus_123",
       targetSlug: "/purchases",
       targetTitle: "Completed Pro monthly checkout",
     });
 
-    expect(insert).toHaveBeenCalledWith(
+    expect(upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         activity_type: "conversion_event",
         lesson_slug: "/purchases",
         lesson_title: "Completed Pro monthly checkout",
+        source_event_id: "evt_checkout",
         user_id: "user-1",
       }),
+      { onConflict: "source_event_id" },
     );
-    expect(insert.mock.calls[0][0].activity_context).toContain('"plan":"pro_monthly"');
+    expect(upsert.mock.calls[0][0].activity_context).toContain('"plan":"pro_monthly"');
   });
 });

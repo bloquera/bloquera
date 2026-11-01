@@ -10,6 +10,12 @@ import {
 import { jsonError } from "@/lib/api-route";
 import { getStripe } from "@/lib/stripe";
 import { getStripeServerEnv } from "@/lib/supabase/config";
+import {
+  claimStripeWebhookEvent,
+  completeStripeWebhookEvent,
+  failStripeWebhookEvent,
+} from "@/server/integrations/stripe/webhook-events";
+import { getRequestId, logError, logInfo } from "@/server/observability/logger";
 
 function getInvoiceSubscriptionId(invoice: Stripe.Invoice) {
   const subscription = invoice.parent?.subscription_details?.subscription;
@@ -18,6 +24,7 @@ function getInvoiceSubscriptionId(invoice: Stripe.Invoice) {
 }
 
 export async function POST(request: Request) {
+  const requestId = getRequestId(request);
   const stripe = getStripe();
   const env = getStripeServerEnv();
 
@@ -45,6 +52,27 @@ export async function POST(request: Request) {
   }
 
   try {
+    const claimed = await claimStripeWebhookEvent(event.id, event.type);
+
+    if (!claimed) {
+      logInfo("stripe.webhook.duplicate", {
+        eventId: event.id,
+        eventType: event.type,
+        requestId,
+      });
+
+      return NextResponse.json({ duplicate: true, received: true });
+    }
+  } catch (error) {
+    logError("stripe.webhook.claim_failed", error, {
+      eventId: event.id,
+      eventType: event.type,
+      requestId,
+    });
+    return jsonError("Unable to process Stripe webhook right now.", 503);
+  }
+
+  try {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
@@ -53,6 +81,7 @@ export async function POST(request: Request) {
           currency: session.currency,
           eventType: event.type,
           status: session.payment_status,
+          stripeEventId: event.id,
           stripeCheckoutSessionId: session.id,
           stripeCustomerId:
             typeof session.customer === "string" ? session.customer : null,
@@ -67,6 +96,7 @@ export async function POST(request: Request) {
               ? session.metadata.plan_slug
               : null,
           source: "stripe_webhook",
+          sourceEventId: event.id,
           stripeCustomerId:
             typeof session.customer === "string" ? session.customer : null,
           targetSlug: "/purchases",
@@ -97,6 +127,7 @@ export async function POST(request: Request) {
           currency: invoice.currency,
           eventType: event.type,
           status: invoice.status,
+          stripeEventId: event.id,
           stripeCustomerId:
             typeof invoice.customer === "string" ? invoice.customer : null,
           stripeInvoiceId: invoice.id,
@@ -107,9 +138,31 @@ export async function POST(request: Request) {
       default:
         break;
     }
-  } catch {
+
+    await completeStripeWebhookEvent(event.id);
+  } catch (error) {
+    try {
+      await failStripeWebhookEvent(event.id, error);
+    } catch (trackingError) {
+      logError("stripe.webhook.failure_tracking_failed", trackingError, {
+        eventId: event.id,
+        eventType: event.type,
+        requestId,
+      });
+    }
+
+    logError("stripe.webhook.processing_failed", error, {
+      eventId: event.id,
+      eventType: event.type,
+      requestId,
+    });
     return jsonError("Unable to process Stripe webhook right now.", 503);
   }
 
+  logInfo("stripe.webhook.processed", {
+    eventId: event.id,
+    eventType: event.type,
+    requestId,
+  });
   return NextResponse.json({ received: true });
 }

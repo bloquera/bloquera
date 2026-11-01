@@ -13,6 +13,12 @@ import {
   hasProAccess,
 } from "@/lib/billing";
 import { createTutorReply, inferTutorTopic } from "@/lib/openai";
+import {
+  consumeDistributedRateLimit,
+  getFixedWindow,
+  getRequestClientIdentifier,
+  getUtcDayWindow,
+} from "@/server/security/distributed-rate-limit";
 
 const MAX_MESSAGE_LENGTH = 500;
 const TUTOR_PROMPT_PREVIEW_MAX = 160;
@@ -223,7 +229,23 @@ export async function POST(request: Request) {
       const existingGuestUsage =
         cookieStore.get(GUEST_TUTOR_USAGE_COOKIE)?.value ?? null;
       const guestId = existingGuestId ?? crypto.randomUUID();
-      const limitResult = getGuestUsageResult(existingGuestUsage);
+      let distributedLimitResult;
+
+      try {
+        distributedLimitResult = await consumeDistributedRateLimit({
+          limit: GUEST_TUTOR_REQUEST_LIMIT,
+          scope: "tutor:guest",
+          subject: getRequestClientIdentifier(request, guestId),
+          window: getFixedWindow(GUEST_TUTOR_COOKIE_MAX_AGE * 1000),
+        });
+      } catch {
+        return jsonError("Unable to load tutor usage right now.", 503);
+      }
+
+      const fallbackLimitResult = distributedLimitResult
+        ? null
+        : getGuestUsageResult(existingGuestUsage);
+      const limitResult = distributedLimitResult ?? fallbackLimitResult!;
 
       if (!limitResult.allowed) {
         const response = NextResponse.json(
@@ -275,10 +297,10 @@ export async function POST(request: Request) {
         );
       }
 
-      if (limitResult.shouldPersist) {
+      if (fallbackLimitResult?.shouldPersist) {
         response.cookies.set(
           GUEST_TUTOR_USAGE_COOKIE,
-          limitResult.value,
+          fallbackLimitResult.value,
           buildGuestCookieOptions(GUEST_TUTOR_COOKIE_MAX_AGE),
         );
       }
@@ -298,13 +320,26 @@ export async function POST(request: Request) {
 
     const activityClient = createSupabaseAdminClient() ?? supabaseResult.supabase;
     let limitResult;
+    let usedDistributedLimit = false;
 
     try {
-      limitResult = await getSignedInTutorUsageToday({
+      const distributedLimitResult = await consumeDistributedRateLimit({
         limit: tutorRequestLimit,
-        supabase: activityClient,
-        userId: user.id,
+        scope: "tutor:user",
+        subject: `user:${user.id}`,
+        window: getUtcDayWindow(),
       });
+
+      if (distributedLimitResult) {
+        limitResult = distributedLimitResult;
+        usedDistributedLimit = true;
+      } else {
+        limitResult = await getSignedInTutorUsageToday({
+          limit: tutorRequestLimit,
+          supabase: activityClient,
+          userId: user.id,
+        });
+      }
     } catch {
       return jsonError("Unable to load tutor usage right now.", 503);
     }
@@ -352,7 +387,9 @@ export async function POST(request: Request) {
       topic,
       usage: {
         ...buildTutorUsage(tutorRequestLimit, {
-          remaining: Math.max(0, limitResult.remaining - 1),
+          remaining: usedDistributedLimit
+            ? limitResult.remaining
+            : Math.max(0, limitResult.remaining - 1),
           resetAt: limitResult.resetAt,
         }),
         plan: hasProAccess(billingSnapshot) ? "pro" : "free",
